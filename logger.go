@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var logFileName string = "robotester.log"
+var logFileName string = "bender-test.log"
 
 // init opens or creates (if non existent) a logfile.
 // global string 'logFileName' defines the name of the logfile
