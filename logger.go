@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 )
 
 var logFileName string = "bender-test.log"
@@ -33,4 +36,29 @@ func LogFatal(v ...interface{}) {
 // LogErrors appends an error to the logfile
 func LogErrors(err error) {
 	log.Println(err.Error())
+}
+
+//WriteLog take a Job struct and save it in log/
+func WriteLog() {
+	for {
+		scr := <-jobDone
+		log_path, _ := filepath.Abs(filepath.Join("log", scr.Script))
+		if _, err := os.Stat(log_path); os.IsNotExist(err) {
+			os.MkdirAll(log_path, 0777)
+		}
+
+		now := time.Now()
+		file_name := fmt.Sprintf("%d.%d.%d-%d.%d.%d-%s.log", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), scr.Uuid)
+		file_path := filepath.Join(log_path, file_name)
+		outfile, _ := os.OpenFile(file_path, os.O_CREATE|os.O_WRONLY, 0666)
+
+		joutput, err := scr.ToJson()
+
+		if err != nil {
+			LogErrors(err)
+		} else {
+			LogAppendLine(fmt.Sprintf("LOGGER log wrote succesfully"))
+		}
+		fmt.Fprintf(outfile, "%s", joutput)
+	}
 }
