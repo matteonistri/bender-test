@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 	"io/ioutil"
+	"errors"
 )
 
 var logFileName string = "bender-test.log"
@@ -41,8 +42,7 @@ func LogErrors(err error) {
 
 //WriteLog take a Job struct and save it in log/
 func WriteLog() {
-	for {
-		scr := <-jobDone
+	for scr := range jobDone {
 		log_path, _ := filepath.Abs(filepath.Join("log", scr.Script))
 		if _, err := os.Stat(log_path); os.IsNotExist(err) {
 			os.MkdirAll(log_path, 0774)
@@ -55,10 +55,24 @@ func WriteLog() {
 		joutput, err := scr.ToJson()
 
 		ioutil.WriteFile(file_path, joutput, 0664)
+
 		if err != nil {
 			LogErrors(err)
 		} else {
 			LogAppendLine(fmt.Sprintf("LOGGER log wrote succesfully"))
 		}
 	}
+}
+
+//ReadLog returns the content of a log file
+func ReadLog(path string) (string, error) {
+	output, err := ioutil.ReadFile(path)
+	var log string
+
+	if err != nil {
+		err = errors.New("Log not found")
+	}
+
+	log = string(output)
+	return log, err
 }

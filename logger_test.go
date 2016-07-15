@@ -32,3 +32,35 @@ func TestWriteLog(t *testing.T){
         t.Error("Test failed")
     }
 }
+
+func TestReadLog(t *testing.T){
+    expected := "{\"Script\":\"script\",\"Path\":\"\",\"Args\":null,\"Uuid\":\"uuid\"," +
+                "\"Output\":\"\",\"Exit\":\"\",\"Request\":\"0001-01-01T00:00:00Z\"," +
+                "\"Start\":\"0001-01-01T00:00:00Z\",\"Finish\":\"0001-01-01T00:00:00Z\"," +
+                "\"Status\":\"\"}"
+
+    file_path := filepath.Join(test_path, file_name)
+    actual, _ := ReadLog(file_path)
+
+    if actual != expected{
+        t.Error("Test failed")
+    }
+}
+
+func TestReadLogWrongFile(t *testing.T){
+    file_path := filepath.Join(test_path, "inexistant_file.log")
+    _, err := ReadLog(file_path)
+
+    if err == nil{
+        t.Error("Test failed")
+    }
+}
+
+func TestReadLogWrongDir(t *testing.T){
+    file_path := filepath.Join("log", "inexistant_dir", file_name)
+    _, err := ReadLog(file_path)
+
+    if err == nil{
+        t.Error("Test failed")
+    }
+}
