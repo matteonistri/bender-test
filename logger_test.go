@@ -64,3 +64,35 @@ func TestReadLogWrongDir(t *testing.T){
         t.Error("Test failed")
     }
 }
+
+func TestReadLogDir(t *testing.T){
+    expected := "{\"Script\":\"script\",\"Path\":\"\",\"Args\":null,\"Uuid\":\"uuid\"," +
+                "\"Output\":\"\",\"Exit\":\"\",\"Request\":\"0001-01-01T00:00:00Z\"," +
+                "\"Start\":\"0001-01-01T00:00:00Z\",\"Finish\":\"0001-01-01T00:00:00Z\"," +
+                "\"Status\":\"\"}\n\n*******************\n\n"
+
+    actual, _ := ReadLogDir(test_path)
+
+    if actual != expected{
+        t.Error("Test failed")
+    }
+}
+
+func TestReadLogDirWrong(t *testing.T){
+    dir_path := filepath.Join("log", "inexistant_dir")
+    _, err := ReadLogDir(dir_path)
+
+    if err == nil{
+        t.Error("Test failed")
+    }
+}
+
+func TestReadLogDirEmpty(t *testing.T){
+    empty := filepath.Join(test_path, "empty_dir")
+    os.Mkdir(empty, 0774)
+    _, err := ReadLogDir(empty)
+
+    if err == nil{
+        t.Error("Test failed")
+    }
+}

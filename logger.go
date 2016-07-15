@@ -76,3 +76,21 @@ func ReadLog(path string) (string, error) {
 	log = string(output)
 	return log, err
 }
+
+//ReadLogDir returns the content of each file in the given dir
+func ReadLogDir(path string) (string, error) {
+	out_log := ""
+	files, err := ioutil.ReadDir(path)
+	for _, file := range files {
+		file_path := filepath.Join(path, file.Name())
+		tmp, _ := ReadLog(file_path)
+		out_log += tmp
+		out_log += "\n\n*******************\n\n"
+	}
+
+	if err != nil || len(files) == 0{
+		err = errors.New("No logs found for the given script")
+	}
+
+	return out_log, err
+}
