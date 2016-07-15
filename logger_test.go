@@ -27,6 +27,7 @@ func TestWriteLog(t *testing.T){
     jobDone <- job
     file_path:= filepath.Join(test_path, file_name)
 
+    time.Sleep(20 * time.Millisecond)
     if _, err := os.Stat(file_path); os.IsNotExist(err){
         t.Error("Test failed")
     }
