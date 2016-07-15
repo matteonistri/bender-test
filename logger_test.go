@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 
 func TestWriteLog(t *testing.T){
     go WriteLog()
-    jobDone <- job
+    jobDone <- &job
     file_path:= filepath.Join(test_path, file_name)
 
     time.Sleep(20 * time.Millisecond)
@@ -78,6 +78,7 @@ func TestReadLogDir(t *testing.T){
     }
 }
 
+
 func TestReadLogDirWrong(t *testing.T){
     dir_path := filepath.Join("log", "inexistant_dir")
     _, err := ReadLogDir(dir_path)
@@ -91,6 +92,23 @@ func TestReadLogDirEmpty(t *testing.T){
     empty := filepath.Join(test_path, "empty_dir")
     os.Mkdir(empty, 0774)
     _, err := ReadLogDir(empty)
+
+    if err == nil{
+        t.Error("Test failed")
+    }
+}
+
+func TestFindLog(t *testing.T){
+    expected := filepath.Join(test_path, file_name)
+    actual, _ := FindLog("uuid")
+
+    if actual != expected{
+        t.Error("Test failed")
+    }
+}
+
+func TestFindLogWrong(t *testing.T){
+    _, err := FindLog("inexistant_id")
 
     if err == nil{
         t.Error("Test failed")

@@ -9,6 +9,7 @@ import (
 	"time"
 	"io/ioutil"
 	"errors"
+	"strings"
 )
 
 var logFileName string = "bender-test.log"
@@ -93,4 +94,33 @@ func ReadLogDir(path string) (string, error) {
 	}
 
 	return out_log, err
+}
+
+//FindLog returns the path of the log file
+//for the given id
+func FindLog(id string) (string, error) {
+	path := ""
+	log_path, err_log := filepath.Abs("log")
+	var err error
+	var files []os.FileInfo
+
+	dirs, err_log := ioutil.ReadDir(log_path)
+
+	for _, dir_path := range dirs {
+		dir, _ := os.Open(filepath.Join(log_path, dir_path.Name()))
+		files, err = dir.Readdir(-1)
+		for _, file := range files {
+			if strings.Contains(file.Name(), id) {
+				path = filepath.Join(dir.Name(), file.Name())
+			}
+		}
+		if err != nil || path == ""{
+			err = errors.New("No log found")
+		}
+	}
+
+	if err_log != nil{
+		err = errors.New("No log found")
+	}
+	return path, err
 }
