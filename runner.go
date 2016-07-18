@@ -5,7 +5,28 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
+
+type JobStatus string
+
+const (
+	JOB_QUEUED     = "queued"
+	JOB_NOT_FOUND  = "not found"
+	JOB_QUEUE_FULL = "queue full"
+	JOB_WORKING    = "working"
+	JOB_FAILED     = "failed"
+	JOB_COMPLETED  = "completed"
+)
+
+type Job struct {
+	Name    string
+	Params  string
+	Uuid    string
+	Created time.Time
+	Status  JobStatus
+	Timeout int
+}
 
 var scriptsDir string
 

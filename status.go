@@ -1,37 +1,10 @@
 package main
 
-import (
-	"reflect"
-	"time"
-)
-
-type JobStatus string
-
-const (
-	JOB_QUEUED     = "queued"
-	JOB_NOT_FOUND  = "not found"
-	JOB_QUEUE_FULL = "queue full"
-	JOB_WORKING    = "working"
-	JOB_FAILED     = "failed"
-	JOB_COMPLETED  = "completed"
-)
-
-type Job struct {
-	Script  string    `json:"script"`
-	Path    string    `json:"path"`
-	Args    []string  `json:"args"`
-	Uuid    string    `json:"uuid"`
-	Output  string    `json:"output"`
-	Exit    string    `json:"exit"`
-	Request time.Time `json:"request"`
-	Start   time.Time `json:"start"`
-	Finish  time.Time `json:"finish"`
-	Status  JobStatus `json:"status"`
-}
+import "reflect"
 
 type Status struct {
-	Idle bool           `json:"idle"`
-	Jobs map[string]Job `json:"jobs"`
+	Idle bool
+	Jobs map[string]Job
 }
 
 type StatusInterface interface {
@@ -45,7 +18,7 @@ type StatusModule struct {
 
 // State stores the provided Job into a map and updates the server idle status
 func (s *StatusModule) SetState(job *Job) {
-	if reflect.DeepEqual(job, &Job{}) {
+	if reflect.DeepEqual(job, &Job{}) || job == nil {
 		LogAppendLine("STATUS  error: empty job provided")
 		return
 	}
