@@ -3,11 +3,33 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gocraft/web"
 )
+
+var sm StatusModule
+var sd statusDaemon
+
+type serverStatus string
+
+const (
+	SERVER_IDLE    = "idle"
+	SERVER_WORKING = "working"
+)
+
+type statusDaemon struct {
+	ServerStatus serverStatus `json:"serverStatus"`
+	ServerName   string       `json:"serverName"`
+	Timestamp    time.Time    `json:"timestamp"`
+}
+
+type statusJobs struct {
+	Jobs []Job `json:"jobs"`
+}
 
 type Context struct {
 	ScriptsDir string
@@ -33,15 +55,36 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-// StatusHandler handles /status requests
+// StatusHandler handles /state requests
 func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
-	if r.PathParams["script"] != "" {
-		fmt.Fprintf(w, "Requested job status for script '%s\n'", r.PathParams["script"])
-	} else if r.PathParams["uuid"] != "" {
-		fmt.Fprintf(w, "Requested job status for uuid '%s'\n", r.PathParams["uuid"])
+	//general state requests
+	if r.RequestURI == "/state" {
+		ds, _ := sm.GetState()
+		if ds {
+			sd.ServerStatus = SERVER_IDLE
+		} else {
+			sd.ServerStatus = SERVER_WORKING
+		}
+
+		js, err := json.Marshal(sd)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			panic("json creation failed")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(js)
 	} else {
-		fmt.Fprintln(w, "Requested server status (general)")
-		fmt.Fprintf(w, "  scripts dir: '%s'\n", c.ScriptsDir)
+		// script-name specific requests
+		r.ParseForm()
+		response := statusJobs{
+			Jobs: sm.GetJobs(r.PathParams["script"])}
+		js, err := json.Marshal(response)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			panic("json creation failed")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(js)
 	}
 }
 
@@ -56,9 +99,18 @@ func DaemonInit(address string, port string) {
 	router.Get("/run/:script", (*Context).RunHandler)
 	router.Get("/log/script/:script", (*Context).LogHandler)
 	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
-	router.Get("/status", (*Context).StatusHandler)
-	router.Get("/status/script/:script", (*Context).StatusHandler)
-	router.Get("/status/uuid/:uuid", (*Context).StatusHandler)
+	router.Get("/state", (*Context).StatusHandler)
+	router.Get("/state/:script", (*Context).StatusHandler)
+
+	// init modules
+	sd = statusDaemon{
+		ServerStatus: SERVER_IDLE,
+		ServerName:   "bender-test",
+		Timestamp:    time.Now()}
+	sm = StatusModule{}
+	sm.Current = Status{
+		Idle: true,
+		Jobs: make(map[string]Job)}
 
 	// start http server
 	LogAppendLine(fmt.Sprintf("[%s] Linsten on %s:%s", DAEMON_MODULE_NAME, address, port))

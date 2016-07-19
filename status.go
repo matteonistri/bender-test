@@ -11,7 +11,7 @@ type StatusInterface interface {
 	SetState(Job)
 	GetState() (bool, int)
 	GetJob(string) Job
-	GetJobs(string) Job
+	GetJobs(string) []Job
 	GetRunningJob() (Job, error)
 }
 
