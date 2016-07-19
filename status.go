@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 type Status struct {
 	Idle bool
 	Jobs map[string]Job
@@ -8,9 +10,9 @@ type Status struct {
 type StatusInterface interface {
 	SetState(Job)
 	GetState() (bool, int)
-	GetJob(string) *Job
-	GetJobs(string) *Job
-	GetRunningJob() *Job
+	GetJob(string) Job
+	GetJobs(string) Job
+	GetRunningJob() (Job, error)
 }
 
 type StatusModule struct {
@@ -37,18 +39,18 @@ func (s *StatusModule) GetState() (bool, int) {
 
 // GetJob looks for a job with the specified uuid and returns its pointer
 // or 'nil' if not found
-func (s *StatusModule) GetJob(uuid string) *Job {
+func (s *StatusModule) GetJob(uuid string) Job {
 	job := s.Current.Jobs[uuid]
-	return &job
+	return job
 }
 
 // GetJobs looks for jobs matching the specified name and returns a list
 // of their poiners
-func (s *StatusModule) GetJobs(name string) []*Job {
-	var jobs []*Job
+func (s *StatusModule) GetJobs(name string) []Job {
+	var jobs []Job
 	for _, v := range s.Current.Jobs {
 		if v.Name == name {
-			jobs = append(jobs, &v)
+			jobs = append(jobs, v)
 		}
 	}
 
@@ -57,12 +59,12 @@ func (s *StatusModule) GetJobs(name string) []*Job {
 
 // GetRunningJob returns a pointer to the currently running job or 'nil' if
 // there is no running job
-func (s *StatusModule) GetRunningJob() *Job {
+func (s *StatusModule) GetRunningJob() (Job, error) {
 	for _, v := range s.Current.Jobs {
 		if v.Status == JOB_WORKING {
-			return &v
+			return v, nil
 		}
 	}
 
-	return nil
+	return Job{}, errors.New("no running jobs (idle)")
 }

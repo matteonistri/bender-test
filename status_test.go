@@ -74,9 +74,12 @@ func TestGetRunningJobValid(t *testing.T) {
 		Status: JOB_WORKING}
 	sm.SetState(fakejob)
 
-	actualJ := sm.GetRunningJob()
-	if !reflect.DeepEqual(*actualJ, fakejob) {
+	actualJ, err := sm.GetRunningJob()
+	if !reflect.DeepEqual(actualJ, fakejob) {
 		t.Error("Expected *Job, got", actualJ)
+	}
+	if err != nil {
+		t.Error("Expected nil, got", err)
 	}
 }
 
@@ -91,9 +94,9 @@ func TestGetRunningJobIdle(t *testing.T) {
 		Status: JOB_COMPLETED}
 	sm.SetState(fakejob)
 
-	actualJ := sm.GetRunningJob()
-	if actualJ != nil {
-		t.Error("Expected nil, got", actualJ)
+	_, err := sm.GetRunningJob()
+	if err == nil {
+		t.Error("Expected nil, got", err)
 	}
 }
 
@@ -188,7 +191,7 @@ func TestGetJobValid(t *testing.T) {
 
 	sm.SetState(fakejob)
 	actualJ := sm.GetJob("bar")
-	if !reflect.DeepEqual(*actualJ, fakejob) {
+	if !reflect.DeepEqual(actualJ, fakejob) {
 		t.Error("Expected", fakejob, ", got", actualJ)
 	}
 }
@@ -204,7 +207,7 @@ func TestGetJobEmpty(t *testing.T) {
 
 	sm.SetState(fakejob)
 	actualJ := sm.GetJob("")
-	if !reflect.DeepEqual(*actualJ, fakejob) {
+	if !reflect.DeepEqual(actualJ, fakejob) {
 		t.Error("Expected", fakejob, ", got", actualJ)
 	}
 }
