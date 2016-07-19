@@ -11,6 +11,7 @@ type StatusInterface interface {
 	SetState(*Job)
 	GetState() (bool, int)
 	GetJob(string, string) *Job
+	GetRunningJob() *Job
 }
 
 type StatusModule struct {
@@ -45,6 +46,18 @@ func (s *StatusModule) GetState() (bool, int) {
 func (s *StatusModule) GetJob(name string, params string) *Job {
 	for _, v := range s.Current.Jobs {
 		if v.Name == name && v.Params == params {
+			return &v
+		}
+	}
+
+	return nil
+}
+
+// GetRunningJob returns a pointer to the currently running job or 'nil' if
+// there is no running job
+func (s *StatusModule) GetRunningJob() *Job {
+	for _, v := range s.Current.Jobs {
+		if v.Status == JOB_WORKING {
 			return &v
 		}
 	}

@@ -158,3 +158,37 @@ func TestGetJobInvalid(t *testing.T) {
 		t.Error("Expected nil, got", actualJ)
 	}
 }
+
+func TestGetRunningJobValid(t *testing.T) {
+	status := Status{
+		Idle: true,
+		Jobs: make(map[string]Job)}
+	sm := StatusModule{
+		Current: status}
+	fakejob := &Job{
+		Name:   "foo",
+		Status: JOB_WORKING}
+	sm.SetState(fakejob)
+
+	actualJ := sm.GetRunningJob()
+	if !reflect.DeepEqual(actualJ, fakejob) {
+		t.Error("Expected *Job, got", actualJ)
+	}
+}
+
+func TestGetRunningJobIdle(t *testing.T) {
+	status := Status{
+		Idle: true,
+		Jobs: make(map[string]Job)}
+	sm := StatusModule{
+		Current: status}
+	fakejob := &Job{
+		Name:   "foo",
+		Status: JOB_COMPLETED}
+	sm.SetState(fakejob)
+
+	actualJ := sm.GetRunningJob()
+	if actualJ != nil {
+		t.Error("Expected nil, got", actualJ)
+	}
+}
