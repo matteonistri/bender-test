@@ -1,12 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"io/ioutil"
-	"os/exec"
-	"path/filepath"
-	"time"
-)
+import "time"
 
 type JobStatus string
 
@@ -29,6 +23,7 @@ type Job struct {
 }
 
 var scriptsDir string
+var run bool
 
 func GetScriptsDir() string {
 	return scriptsDir
@@ -38,51 +33,48 @@ func SetScriptsDir(dir string) {
 	scriptsDir = dir
 }
 
-func init() {
-	scriptsDir = "scripts"
+//Inizialize the context and execute the given script
+func Run(job *Job, script, uuid, args string) int{
+    job.Name = script
+    job.Uuid = uuid
+    job.Params = args
+    job.Status = JOB_WORKING
+
+    var exit int
+
+    if HasScript(job.Name){
+        run = true
+        go func(){
+            time.Sleep(3 * time.Second)
+            //execution...
+            run = false
+        }()
+        exit = 0
+    } else {
+        exit = -1
+    }
+
+    return exit
 }
 
-// Runner executes the specified script with the given parameters and returns
-// the output
-func Runner(name string, param []string) string {
-	cmd := exec.Command(name, param...)
-	var output string
-	out, err := cmd.Output()
-	if err != nil {
-		output = fmt.Sprintf("Error occurred\n%s", err)
-	} else {
-		output = fmt.Sprintf("%s", out)
-	}
-	return output
+//Check if a script exists
+func HasScript(script string) bool{
+    return true
 }
 
-// hasScript checks for the script existance
-func HasScript(search string) bool {
-	files, err := ioutil.ReadDir(scriptsDir)
-	if err != nil {
-		return false
-	}
-	k := len(files)
-	for i := 0; i < k; i++ {
-		namefile := files[i].Name()[0 : len(files[i].Name())-len(filepath.Ext(files[i].Name()))]
-		if namefile == search {
-			return true
-		}
-	}
-	return false
+//Return the current stdout
+func Log(job *Job) string{
+    buf := make([]byte, 100)
+    //reading from stdout pipe
+    return string(buf)
 }
 
-// listScripts returns a list of scripts in the default script folder
-func ListScripts() []string {
-	files, err := ioutil.ReadDir(scriptsDir)
-	if err != nil {
-		return nil
-	}
-	names := []string{}
-	k := len(files)
-	for i := 0; i < k; i++ {
-		names = append(names, files[i].Name())
-	}
-	fmt.Println(names)
-	return names
+//Handle the status of script
+func State(job *Job){
+    if run {
+        job.Status = JOB_WORKING
+    } else {
+        job.Status = JOB_COMPLETED
+    }
+
 }
