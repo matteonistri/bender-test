@@ -1,16 +1,15 @@
 package main
 
-import "reflect"
-
 type Status struct {
 	Idle bool
 	Jobs map[string]Job
 }
 
 type StatusInterface interface {
-	SetState(*Job)
+	SetState(Job)
 	GetState() (bool, int)
-	GetJob(string, string) *Job
+	GetJob(string) *Job
+	GetJobs(string) *Job
 	GetRunningJob() *Job
 }
 
@@ -20,13 +19,8 @@ type StatusModule struct {
 
 // SetState stores the provided Job into a map and updates the server idle
 // status
-func (s *StatusModule) SetState(job *Job) {
-	if reflect.DeepEqual(job, &Job{}) || job == nil {
-		LogAppendLine("STATUS  error: empty job provided")
-		return
-	}
-
-	s.Current.Jobs[job.Uuid] = *job
+func (s *StatusModule) SetState(job Job) {
+	s.Current.Jobs[job.Uuid] = job
 	if job.Status == JOB_WORKING {
 		s.Current.Idle = false
 		return
@@ -41,16 +35,24 @@ func (s *StatusModule) GetState() (bool, int) {
 	return s.Current.Idle, len(s.Current.Jobs)
 }
 
-// GetJob looks for a job with the specified name and params and returns
-// its pointer or 'nil' if not found
-func (s *StatusModule) GetJob(name string, params string) *Job {
+// GetJob looks for a job with the specified uuid and returns its pointer
+// or 'nil' if not found
+func (s *StatusModule) GetJob(uuid string) *Job {
+	job := s.Current.Jobs[uuid]
+	return &job
+}
+
+// GetJobs looks for jobs matching the specified name and returns a list
+// of their poiners
+func (s *StatusModule) GetJobs(name string) []*Job {
+	var jobs []*Job
 	for _, v := range s.Current.Jobs {
-		if v.Name == name && v.Params == params {
-			return &v
+		if v.Name == name {
+			jobs = append(jobs, &v)
 		}
 	}
 
-	return nil
+	return jobs
 }
 
 // GetRunningJob returns a pointer to the currently running job or 'nil' if
