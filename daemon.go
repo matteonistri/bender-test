@@ -3,11 +3,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/gocraft/web"
+	"github.com/satori/go.uuid"
 )
+
+type statusJobs struct {
+	Jobs []Job `json:"jobs"`
+}
 
 type Context struct {
 	ScriptsDir string
@@ -21,7 +27,27 @@ func (c *Context) SetDefaults(w web.ResponseWriter, r *web.Request, next web.Nex
 
 // RunHandler handles /run requests
 func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
-	fmt.Fprintf(w, "Requested execution of script '%s'\n", r.PathParams["script"])
+	r.ParseForm()
+
+	name := r.PathParams["script"]
+	uuid := uuid.NewV4()
+	timeout := 600
+	params := r.Form
+
+	status, _ := sm.GetState()
+	if status == SERVER_WORKING {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	// -- replace with submit --
+	fmt.Fprintf(w, "TEST_NAME: %s\n", name)
+	fmt.Fprintf(w, "UUID: %s\n", uuid)
+	fmt.Fprintf(w, "TIMEOUT: %d\n", timeout)
+	fmt.Fprintf(w, "PARAMS: %s\n", params)
+	// -------------------------
 }
 
 // LogHandler handles /log requests
@@ -33,15 +59,29 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-// StatusHandler handles /status requests
+// StatusHandler handles /state requests
 func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
-	if r.PathParams["script"] != "" {
-		fmt.Fprintf(w, "Requested job status for script '%s\n'", r.PathParams["script"])
-	} else if r.PathParams["uuid"] != "" {
-		fmt.Fprintf(w, "Requested job status for uuid '%s'\n", r.PathParams["uuid"])
+	//general state requests
+	if r.RequestURI == "/state" {
+		js, err := json.Marshal(sm.Current)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			panic("json creation failed")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(js)
 	} else {
-		fmt.Fprintln(w, "Requested server status (general)")
-		fmt.Fprintf(w, "  scripts dir: '%s'\n", c.ScriptsDir)
+		// script-name specific requests
+		r.ParseForm()
+		response := statusJobs{
+			Jobs: sm.GetJobs(r.PathParams["script"])}
+		js, err := json.Marshal(response)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			panic("json creation failed")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(js)
 	}
 }
 
@@ -56,9 +96,8 @@ func DaemonInit(address string, port string) {
 	router.Get("/run/:script", (*Context).RunHandler)
 	router.Get("/log/script/:script", (*Context).LogHandler)
 	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
-	router.Get("/status", (*Context).StatusHandler)
-	router.Get("/status/script/:script", (*Context).StatusHandler)
-	router.Get("/status/uuid/:uuid", (*Context).StatusHandler)
+	router.Get("/state", (*Context).StatusHandler)
+	router.Get("/state/:script", (*Context).StatusHandler)
 
 	// start http server
 	LogAppendLine(fmt.Sprintf("[%s] Linsten on %s:%s", DAEMON_MODULE_NAME, address, port))

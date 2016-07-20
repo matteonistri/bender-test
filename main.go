@@ -7,6 +7,8 @@ import (
 	"github.com/matishsiao/goInfo"
 )
 
+var sm StatusModule
+
 func main() {
 	gi := goInfo.GetInfo()
 	LogAppendLine(fmt.Sprintf("== Bender test =="))
@@ -14,5 +16,6 @@ func main() {
 	LogAppendLine(fmt.Sprintf("START  %s", time.Now()))
 
 	// Put init here..
+	sm = StatusModuleInit("bender-test")
 	DaemonInit("", "8080")
 }

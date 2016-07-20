@@ -1,17 +1,22 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type Status struct {
-	Idle bool
-	Jobs map[string]Job
+	State     serverStatus
+	Name      string
+	Timestamp time.Time
+	Jobs      map[string]Job
 }
 
 type StatusInterface interface {
 	SetState(Job)
 	GetState() (bool, int)
 	GetJob(string) Job
-	GetJobs(string) Job
+	GetJobs(string) []Job
 	GetRunningJob() (Job, error)
 }
 
@@ -19,22 +24,29 @@ type StatusModule struct {
 	Current Status
 }
 
+type serverStatus string
+
+const (
+	SERVER_IDLE    = "idle"
+	SERVER_WORKING = "working"
+)
+
 // SetState stores the provided Job into a map and updates the server idle
 // status
 func (s *StatusModule) SetState(job Job) {
 	s.Current.Jobs[job.Uuid] = job
 	if job.Status == JOB_WORKING {
-		s.Current.Idle = false
+		s.Current.State = SERVER_WORKING
 		return
 	}
 
-	s.Current.Idle = true
+	s.Current.State = SERVER_IDLE
 	return
 }
 
 // GetState returns the current idle status and the number of stored jobs
-func (s *StatusModule) GetState() (bool, int) {
-	return s.Current.Idle, len(s.Current.Jobs)
+func (s *StatusModule) GetState() (serverStatus, int) {
+	return s.Current.State, len(s.Current.Jobs)
 }
 
 // GetJob looks for a job with the specified uuid and returns its pointer
@@ -67,4 +79,16 @@ func (s *StatusModule) GetRunningJob() (Job, error) {
 	}
 
 	return Job{}, errors.New("no running jobs (idle)")
+}
+
+// initStatus initializes the status module
+func StatusModuleInit(name string) StatusModule {
+	sm = StatusModule{}
+	sm.Current = Status{
+		State:     SERVER_IDLE,
+		Name:      name,
+		Jobs:      make(map[string]Job),
+		Timestamp: time.Now()}
+
+	return sm
 }

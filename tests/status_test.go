@@ -9,8 +9,8 @@ import (
 
 func TestRunningJob(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 	fakejob := Job{
@@ -18,8 +18,8 @@ func TestRunningJob(t *testing.T) {
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if actualB {
-		t.Error("Expected false, got", actualB)
+	if actualB == SERVER_IDLE {
+		t.Error("Expected SERVER_WORKING, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -28,8 +28,8 @@ func TestRunningJob(t *testing.T) {
 
 func TestFinishedJob(t *testing.T) {
 	status := Status{
-		Idle: false,
-		Jobs: make(map[string]Job)}
+		State: SERVER_WORKING,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 	fakejob := Job{
@@ -37,8 +37,8 @@ func TestFinishedJob(t *testing.T) {
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if !actualB {
-		t.Error("Expected true, got", actualB)
+	if actualB == SERVER_WORKING {
+		t.Error("Expected SERVER_IDLE, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -47,16 +47,16 @@ func TestFinishedJob(t *testing.T) {
 
 func TestEmptyJob(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 	fakejob := Job{}
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if !actualB {
-		t.Error("Expected true, got", actualB)
+	if actualB == SERVER_WORKING {
+		t.Error("Expected SERVER_IDLE, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -65,8 +65,8 @@ func TestEmptyJob(t *testing.T) {
 
 func TestGetRunningJobValid(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 	fakejob := Job{
@@ -85,8 +85,8 @@ func TestGetRunningJobValid(t *testing.T) {
 
 func TestGetRunningJobIdle(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 	fakejob := Job{
@@ -102,8 +102,8 @@ func TestGetRunningJobIdle(t *testing.T) {
 
 func TestGetJobsValid(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 
@@ -129,8 +129,8 @@ func TestGetJobsValid(t *testing.T) {
 
 func TestGetJobsEmpty(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 
@@ -153,8 +153,8 @@ func TestGetJobsEmpty(t *testing.T) {
 
 func TestGetJobsInvalid(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 
@@ -180,8 +180,8 @@ func TestGetJobsInvalid(t *testing.T) {
 
 func TestGetJobValid(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 
@@ -198,8 +198,8 @@ func TestGetJobValid(t *testing.T) {
 
 func TestGetJobEmpty(t *testing.T) {
 	status := Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
+		State: SERVER_IDLE,
+		Jobs:  make(map[string]Job)}
 	sm := StatusModule{
 		Current: status}
 
