@@ -64,23 +64,30 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 // StatusHandler handles /state requests
 func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
+
 	if r.RequestURI == "/state" {
+		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
 		js, err := json.Marshal(sm.Current)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			panic("json creation failed")
+			LogErr(logContextDaemon, "json creation failed")
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(js)
 	} else {
 		// script-name specific requests
 		r.ParseForm()
+
+		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", r.PathParams["script"], r.RemoteAddr)
+
 		response := statusJobs{
 			Jobs: sm.GetJobs(r.PathParams["script"])}
 		js, err := json.Marshal(response)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			panic("json creation failed")
+			LogErr(logContextDaemon, "json creation failed")
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(js)
