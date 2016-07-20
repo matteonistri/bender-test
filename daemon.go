@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gocraft/web"
+	"github.com/satori/go.uuid"
 )
 
 type statusDaemon struct {
@@ -33,7 +34,20 @@ func (c *Context) SetDefaults(w web.ResponseWriter, r *web.Request, next web.Nex
 
 // RunHandler handles /run requests
 func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
-	fmt.Fprintf(w, "Requested execution of script '%s'\n", r.PathParams["script"])
+	r.ParseForm()
+
+	name := r.PathParams["script"]
+	uuid := uuid.NewV4()
+	timeout := 600
+	args := r.Form
+
+	if sd.ServerStatus == SERVER_WORKING {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	Submit(name, uuid, args, timeout)
 }
 
 // LogHandler handles /log requests
