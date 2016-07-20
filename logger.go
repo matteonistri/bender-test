@@ -35,7 +35,7 @@ func LoggerModuleInit(logName string) {
 // first are handled in the manner of fmt.Printf.
 func LogErr(c LoggerContext, s string, v ...interface{}) {
 	if c.level >= LOG_ERROR {
-		log.Printf("["+c.name+"]"+"  ERROR  "+s, v...)
+		log.Printf("["+c.name+"]"+" ERR: "+s, v...)
 	}
 }
 
@@ -43,7 +43,7 @@ func LogErr(c LoggerContext, s string, v ...interface{}) {
 // first are handled in the manner of fmt.Printf.
 func LogWar(c LoggerContext, s string, v ...interface{}) {
 	if c.level >= LOG_WARNING {
-		log.Printf("["+c.name+"]"+"  WARNING  "+s, v...)
+		log.Printf("["+c.name+"]"+" WARN: "+s, v...)
 	}
 }
 
@@ -51,7 +51,7 @@ func LogWar(c LoggerContext, s string, v ...interface{}) {
 // first are handled in the manner of fmt.Printf.
 func LogInf(c LoggerContext, s string, v ...interface{}) {
 	if c.level >= LOG_INFO {
-		log.Printf("["+c.name+"]"+"  INFO  "+s, v...)
+		log.Printf("["+c.name+"]"+" INFO: "+s, v...)
 	}
 }
 
@@ -59,7 +59,7 @@ func LogInf(c LoggerContext, s string, v ...interface{}) {
 // first are handled in the manner of fmt.Printf.
 func LogDeb(c LoggerContext, s string, v ...interface{}) {
 	if c.level <= LOG_DEBUG {
-		log.Printf("["+c.name+"]"+"  DEBUG  "+s, v...)
+		log.Printf("["+c.name+"]"+" DEBUG: "+s, v...)
 	}
 }
 
