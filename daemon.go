@@ -11,16 +11,6 @@ import (
 	"github.com/gocraft/web"
 )
 
-var sm StatusModule
-var sd statusDaemon
-
-type serverStatus string
-
-const (
-	SERVER_IDLE    = "idle"
-	SERVER_WORKING = "working"
-)
-
 type statusDaemon struct {
 	ServerStatus serverStatus `json:"serverStatus"`
 	ServerName   string       `json:"serverName"`
@@ -59,13 +49,6 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 	if r.RequestURI == "/state" {
-		ds, _ := sm.GetState()
-		if ds {
-			sd.ServerStatus = SERVER_IDLE
-		} else {
-			sd.ServerStatus = SERVER_WORKING
-		}
-
 		js, err := json.Marshal(sd)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -88,6 +71,16 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
+// InitDaemonStatus initializes a stausDaemon struct
+func InitDaemonStatus(serverName string) statusDaemon {
+	sd = statusDaemon{
+		ServerStatus: SERVER_IDLE,
+		ServerName:   serverName,
+		Timestamp:    time.Now()}
+
+	return sd
+}
+
 const DAEMON_MODULE_NAME = "DAEMON"
 
 func DaemonInit(address string, port string) {
@@ -101,16 +94,6 @@ func DaemonInit(address string, port string) {
 	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
 	router.Get("/state", (*Context).StatusHandler)
 	router.Get("/state/:script", (*Context).StatusHandler)
-
-	// init modules
-	sd = statusDaemon{
-		ServerStatus: SERVER_IDLE,
-		ServerName:   "bender-test",
-		Timestamp:    time.Now()}
-	sm = StatusModule{}
-	sm.Current = Status{
-		Idle: true,
-		Jobs: make(map[string]Job)}
 
 	// start http server
 	LogAppendLine(fmt.Sprintf("[%s] Linsten on %s:%s", DAEMON_MODULE_NAME, address, port))
