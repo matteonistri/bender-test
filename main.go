@@ -17,6 +17,5 @@ func main() {
 	gi := goInfo.GetInfo()
 	LogInf(logContextMain, "== Bender test ==")
 	LogInf(logContextMain, "Run on: %v", gi)
-	LogInf(logContextMain, "Start")
-	DaemonInit("localhost", "8080")
+	DaemonInit("0.0.0.0", "8080")
 }
