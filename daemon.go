@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gocraft/web"
 )
@@ -46,8 +45,10 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func DaemonInit() {
-	LogAppendLine(fmt.Sprintf("START  %s", time.Now()))
+const DAEMON_MODULE_NAME = "DAEMON"
+
+func DaemonInit(address string, port string) {
+	LogAppendLine(fmt.Sprintf("[%s] START", DAEMON_MODULE_NAME))
 
 	// init http handlers
 	router := web.New(Context{})
@@ -60,5 +61,6 @@ func DaemonInit() {
 	router.Get("/status/uuid/:uuid", (*Context).StatusHandler)
 
 	// start http server
-	LogFatal(http.ListenAndServe(":8080", router))
+	LogAppendLine(fmt.Sprintf("[%s] Linsten on %s:%s", DAEMON_MODULE_NAME, address, port))
+	LogFatal(http.ListenAndServe(address+":"+port, router))
 }
