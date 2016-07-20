@@ -1,5 +1,5 @@
 {
-	"ImportPath": "bender-test",
+	"ImportPath": "github.com/develersrl/bender-test",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v74",
 	"Deps": [
@@ -11,6 +11,11 @@
 		{
 			"ImportPath": "github.com/matishsiao/goInfo",
 			"Rev": "ed1e14d7a97bcc483d8f1e0c962114988768c37e"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Comment": "v1.1.0",
+			"Rev": "879c5887cd475cd7864858769793b2ceb0d44feb"
 		}
 	]
 }
