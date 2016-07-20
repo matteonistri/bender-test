@@ -3,5 +3,5 @@ dependencies:
         - sudo apt-get -y install golang
 test:
     override:
-        - make test
+        - go test -cover ./tests
 
