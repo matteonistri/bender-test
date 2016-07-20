@@ -6,17 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gocraft/web"
 	"github.com/satori/go.uuid"
 )
-
-type statusDaemon struct {
-	ServerStatus serverStatus `json:"serverStatus"`
-	ServerName   string       `json:"serverName"`
-	Timestamp    time.Time    `json:"timestamp"`
-}
 
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
@@ -39,15 +32,22 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	name := r.PathParams["script"]
 	uuid := uuid.NewV4()
 	timeout := 600
-	args := r.Form
+	params := r.Form
 
-	if sd.ServerStatus == SERVER_WORKING {
+	status, _ := sm.GetState()
+	if status == SERVER_WORKING {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	Submit(name, uuid, args, timeout)
+
+	// -- replace with submit --
+	fmt.Fprintf(w, "TEST_NAME: %s\n", name)
+	fmt.Fprintf(w, "UUID: %s\n", uuid)
+	fmt.Fprintf(w, "TIMEOUT: %d\n", timeout)
+	fmt.Fprintf(w, "PARAMS: %s\n", params)
+	// -------------------------
 }
 
 // LogHandler handles /log requests
@@ -63,7 +63,7 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 	if r.RequestURI == "/state" {
-		js, err := json.Marshal(sd)
+		js, err := json.Marshal(sm.Current)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			panic("json creation failed")
@@ -83,16 +83,6 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(js)
 	}
-}
-
-// InitDaemonStatus initializes a stausDaemon struct
-func InitDaemonStatus(serverName string) statusDaemon {
-	sd = statusDaemon{
-		ServerStatus: SERVER_IDLE,
-		ServerName:   serverName,
-		Timestamp:    time.Now()}
-
-	return sd
 }
 
 const DAEMON_MODULE_NAME = "DAEMON"

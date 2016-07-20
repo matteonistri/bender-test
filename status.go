@@ -1,10 +1,15 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type Status struct {
-	State serverStatus
-	Jobs  map[string]Job
+	State     serverStatus
+	Name      string
+	Timestamp time.Time
+	Jobs      map[string]Job
 }
 
 type StatusInterface interface {
@@ -77,11 +82,13 @@ func (s *StatusModule) GetRunningJob() (Job, error) {
 }
 
 // initStatus initializes the status module
-func InitStatusModule() StatusModule {
+func StatusModuleInit(name string) StatusModule {
 	sm = StatusModule{}
 	sm.Current = Status{
-		State: SERVER_IDLE,
-		Jobs:  make(map[string]Job)}
+		State:     SERVER_IDLE,
+		Name:      name,
+		Jobs:      make(map[string]Job),
+		Timestamp: time.Now()}
 
 	return sm
 }

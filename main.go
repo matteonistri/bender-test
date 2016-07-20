@@ -8,7 +8,6 @@ import (
 )
 
 var sm StatusModule
-var sd statusDaemon
 
 func main() {
 	gi := goInfo.GetInfo()
@@ -17,7 +16,6 @@ func main() {
 	LogAppendLine(fmt.Sprintf("START  %s", time.Now()))
 
 	// Put init here..
-	sd = InitDaemonStatus("bender-test")
-	sm = InitStatusModule()
+	sm = StatusModuleInit("bender-test")
 	DaemonInit("", "8080")
 }
