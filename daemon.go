@@ -46,7 +46,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func main() {
+func DaemonInit() {
 	LogAppendLine(fmt.Sprintf("START  %s", time.Now()))
 
 	// init http handlers
