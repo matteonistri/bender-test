@@ -1,3 +1,7 @@
 dependencies:
     pre:
         - sudo apt-get -y install golang
+test:
+    override:
+        - make test
+
