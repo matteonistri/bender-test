@@ -20,18 +20,20 @@ func init(){
 			var job Job
 
 			ret := Run(&job, params.name, params.uuid, params.args)
+			logChan := *Log()
 
 			if ret == 0 {
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
 
 				for time.Since(start) <  timeout{
-					fmt.Println("Reading from stdout", Log(&job))
+					fmt.Println("stdout:", <-logChan)
 					State(&job)
 					UpdateState(job)
 					if job.Status == JOB_COMPLETED{
 						break
 					}
+
 				}
 
 				if time.Since(start) >  timeout{
