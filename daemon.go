@@ -11,6 +11,8 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+var logContextDaemon LoggerContext
+
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
 }
@@ -85,10 +87,12 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-const DAEMON_MODULE_NAME = "DAEMON"
-
 func DaemonInit(address string, port string) {
-	LogAppendLine(fmt.Sprintf("[%s] START", DAEMON_MODULE_NAME))
+	// init logger
+	logContextDaemon = LoggerContext{
+		level: 3,
+		name:  "DAEMON"}
+	LogInf(logContextDaemon, "START")
 
 	// init http handlers
 	router := web.New(Context{})
@@ -100,6 +104,6 @@ func DaemonInit(address string, port string) {
 	router.Get("/state/:script", (*Context).StatusHandler)
 
 	// start http server
-	LogAppendLine(fmt.Sprintf("[%s] Linsten on %s:%s", DAEMON_MODULE_NAME, address, port))
-	LogFatal(http.ListenAndServe(address+":"+port, router))
+	LogInf(logContextDaemon, "Listening on %s:%s", address, port)
+	LogFatal(logContextDaemon, http.ListenAndServe(address+":"+port, router))
 }
