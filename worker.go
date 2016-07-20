@@ -19,17 +19,27 @@ func init(){
 			params := <-__SubmitChannel
 			var job Job
 
-			Run(&job, params.name, params.uuid, params.args)
+			ret := Run(&job, params.name, params.uuid, params.args)
 
-			start := time.Now()
-			timeout := time.Duration(params.timeout) * time.Millisecond
-			for time.Since(start) <  timeout{
-				fmt.Println("Reading from stdout", Log(&job))
-				State(&job)
-				UpdateState(job)
-				if job.Status == JOB_COMPLETED{
-					break
+			if ret == 0 {
+				start := time.Now()
+				timeout := time.Duration(params.timeout) * time.Millisecond
+
+				for time.Since(start) <  timeout{
+					fmt.Println("Reading from stdout", Log(&job))
+					State(&job)
+					UpdateState(job)
+					if job.Status == JOB_COMPLETED{
+						break
+					}
 				}
+
+				if time.Since(start) >  timeout{
+					job.Status = JOB_FAILED
+				}
+
+			} else {
+				job.Status = JOB_NOT_FOUND
 			}
         }
     }()
