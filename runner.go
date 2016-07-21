@@ -3,6 +3,7 @@ package main
 import ("time"
         "os/exec"
         "strings"
+        "io"
         "path/filepath"
         "bufio")
 
@@ -119,8 +120,10 @@ func Run(job *Job, script, uuid, args string) int{
 //Return the current stdout
 func Log() *chan string{
     go func(){
-        pipe, _ := cmd.StdoutPipe()
-        scanner := bufio.NewScanner(pipe)
+        stdout, _ := cmd.StdoutPipe()
+        stderr, _ := cmd.StderrPipe()
+        multi := io.MultiReader(stdout, stderr)
+        scanner := bufio.NewScanner(multi)
 
         for scanner.Scan() {
             outChan <- scanner.Text()
