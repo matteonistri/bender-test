@@ -4,6 +4,7 @@ import ("time"
 		"fmt")
 
 var __SubmitChannel chan Params
+var logContextWorker LoggerContext
 
 type Params struct{
 	name string
@@ -13,6 +14,10 @@ type Params struct{
 }
 
 func init(){
+	logContextWorker = LoggerContext{
+		name: "WORKER",
+		level: 3}
+
 	__SubmitChannel = make(chan Params)
 	go func(){
 		for {
@@ -27,13 +32,12 @@ func init(){
 				timeout := time.Duration(params.timeout) * time.Millisecond
 
 				for time.Since(start) <  timeout{
-					fmt.Println("stdout:", <-logChan)
+					fmt.Println(<-logChan)
 					State(&job)
 					UpdateState(job)
 					if job.Status == JOB_COMPLETED{
 						break
 					}
-
 				}
 
 				if time.Since(start) >  timeout{
@@ -42,6 +46,11 @@ func init(){
 
 			} else {
 				job.Status = JOB_NOT_FOUND
+			}
+
+			if time.Since(start) >  timeout{
+ 				LogWar(logContextWorker, "Execution timed out")
+ 				job.Status = JOB_FAILED
 			}
         }
     }()

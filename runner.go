@@ -4,6 +4,7 @@ import ("time"
         "os/exec"
         "strings"
         "io"
+        "os"
         "path/filepath"
         "bufio")
 
@@ -40,6 +41,9 @@ func SetScriptsDir(dir string) {
 
 func init(){
     SetScriptsDir("scripts")
+    logContextRunner = LoggerContext{
+        name: "RUNNER",
+        level: 3}
 }
 
 func FakeRun(job *Job, script, uuid, args string) int{
@@ -70,7 +74,7 @@ func FakeHasScript(script string) bool{
     return true
 }
 
-//Return the current stdout
+//Return the current stdout and stderr
 func FakeLog(job *Job) string{
     buf := make([]byte, 100)
     //reading from stdout pipe
@@ -89,6 +93,7 @@ func FakeState(job *Job){
 
 var cmd = exec.Command("")
 var outChan = make(chan string, 1)
+var logContextRunner LoggerContext
 
 func Run(job *Job, script, uuid, args string) int{
     job.Name = script
@@ -98,32 +103,53 @@ func Run(job *Job, script, uuid, args string) int{
 
     var exit int
 
-    if FakeHasScript(job.Name){
+    if HasScript(job.Name){
         params := strings.Split(job.Params, " ")
         script_path := filepath.Join(GetScriptsDir(), job.Name)
         cmd = exec.Command(script_path, params...)
         run = true
         go func(){
+            LogInf(logContextRunner, "Execution started...")
             cmd.Start()
-            cmd.Wait()
+            err := cmd.Wait()
+            LogInf(logContextRunner, "Execution finished")
+
+            if err != nil{
+                LogErr(logContextRunner, "Error occurred during execution")
+            }
             run = false
         }()
         exit = 0
     } else {
+        LogErr(logContextRunner, "Script does not exist")
         exit = -1
     }
 
     return exit
 }
 
+//Check if a script exists
+func HasScript(script string) bool {
+    path := filepath.Join(GetScriptsDir(), script)
 
-//Return the current stdout
+    if _, err := os.Stat(path); err == nil {
+        return true
+    }
+    return false
+}
+
+
+//Return the current stdout and stderr
 func Log() *chan string{
     go func(){
-        stdout, _ := cmd.StdoutPipe()
-        stderr, _ := cmd.StderrPipe()
+        stdout, err := cmd.StdoutPipe()
+        stderr, err := cmd.StderrPipe()
         multi := io.MultiReader(stdout, stderr)
         scanner := bufio.NewScanner(multi)
+
+        if err != nil{
+            LogErr(logContextRunner, "Error occurred while reading stdout/stderr")
+        }
 
         for scanner.Scan() {
             outChan <- scanner.Text()
