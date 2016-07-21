@@ -30,27 +30,26 @@ func init(){
 			if ret == 0 {
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
-
 				for time.Since(start) <  timeout{
-					fmt.Println(<-logChan)
 					State(&job)
 					UpdateState(job)
-					if job.Status == JOB_COMPLETED{
+					if job.Status != JOB_WORKING{
 						break
+					}
+					select{
+						case out := <-logChan:
+							fmt.Println(out)
+						default:
+							time.Sleep(500 * time.Millisecond)
 					}
 				}
 
 				if time.Since(start) >  timeout{
-					job.Status = JOB_FAILED
+	 				LogWar(logContextWorker, "Execution timed out")
+	 				job.Status = JOB_FAILED
 				}
-
 			} else {
 				job.Status = JOB_NOT_FOUND
-			}
-
-			if time.Since(start) >  timeout{
- 				LogWar(logContextWorker, "Execution timed out")
- 				job.Status = JOB_FAILED
 			}
         }
     }()

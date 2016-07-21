@@ -107,7 +107,6 @@ func Run(job *Job, script, uuid, args string) int{
         params := strings.Split(job.Params, " ")
         script_path := filepath.Join(GetScriptsDir(), job.Name)
         cmd = exec.Command(script_path, params...)
-        run = true
         go func(){
             LogInf(logContextRunner, "Execution started...")
             cmd.Start()
@@ -117,7 +116,6 @@ func Run(job *Job, script, uuid, args string) int{
             if err != nil{
                 LogErr(logContextRunner, "Error occurred during execution")
             }
-            run = false
         }()
         exit = 0
     } else {
@@ -157,4 +155,15 @@ func Log() *chan string{
     }()
 
     return &outChan
+}
+
+//Handle the status of script
+func State(job *Job) {
+    if cmd.ProcessState == nil{
+        job.Status = JOB_WORKING
+    } else if cmd.ProcessState.Success(){
+        job.Status = JOB_COMPLETED
+    } else {
+        job.Status = JOB_FAILED
+    }
 }
