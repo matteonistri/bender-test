@@ -6,16 +6,18 @@ var sm StatusModule
 var logContextMain LoggerContext
 
 func main() {
-	// Put init here..
+	// init modules
 	LoggerModuleInit("bender-test")
+	cfg := ConfigInit("bender-test")
+
 	logContextMain = LoggerContext{
 		name:  "MAIN",
-		level: 3}
-	sm = StatusModuleInit("bender-test")
+		level: cfg.generalLogLevel}
+	sm = StatusModuleInit(cfg.statusName)
 
 	// Start daemon
 	gi := goInfo.GetInfo()
 	LogInf(logContextMain, "== Bender test ==")
 	LogInf(logContextMain, "Run on: %v", gi)
-	DaemonInit("0.0.0.0", "8080")
+	DaemonInit(cfg.daemonLogLevel, "0.0.0.0", "8080")
 }

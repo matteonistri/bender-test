@@ -94,10 +94,10 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func DaemonInit(address string, port string) {
+func DaemonInit(logLevel int, address string, port string) {
 	// init logger
 	logContextDaemon = LoggerContext{
-		level: 3,
+		level: logLevel,
 		name:  "DAEMON"}
 	LogInf(logContextDaemon, "START")
 
