@@ -65,6 +65,6 @@ func LogDeb(c LoggerContext, s string, v ...interface{}) {
 
 // LogFatal writes to logfile and terminates the program when the called
 // interface ends
-func LogFatal(v ...interface{}) {
-	log.Fatal(v)
+func LogFatal(c LoggerContext, v ...interface{}) {
+	log.Fatalf("["+c.name+"]"+" FATAL: %s", v...)
 }
