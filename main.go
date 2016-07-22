@@ -14,7 +14,7 @@ func main() {
 		name:  "MAIN",
 		level: cm.GetLogLevel("general", 3)}
 
-	StatusModuleInit(&sm, cm.Get("status", "servername", "bender"))
+	StatusModuleInit(&sm, &cm)
 
 	// Start daemon
 	gi := goInfo.GetInfo()

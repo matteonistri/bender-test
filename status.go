@@ -78,9 +78,9 @@ func (s *StatusModule) GetRunningJob() (Job, error) {
 }
 
 // initStatus initializes the status module
-func StatusModuleInit(sm *StatusModule, name string) {
+func StatusModuleInit(sm *StatusModule, cm *ConfigModule) {
 	sm.State = SERVER_IDLE
-	sm.Name = name
+	sm.Name = cm.Get("status", "servername", "bender")
 	sm.Jobs = make(map[string]Job)
 	sm.Timestamp = time.Now()
 }
