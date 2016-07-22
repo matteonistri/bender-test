@@ -2,10 +2,11 @@ package main
 
 import "github.com/matishsiao/goInfo"
 
-var sm StatusModule
 var logContextMain LoggerContext
 
 func main() {
+	var sm StatusModule
+
 	// init modules
 	LoggerModuleInit("bender-test")
 	cfg := ConfigInit("bender-test")
@@ -13,11 +14,12 @@ func main() {
 	logContextMain = LoggerContext{
 		name:  "MAIN",
 		level: cfg.generalLogLevel}
-	sm = StatusModuleInit(cfg.statusName)
+
+	StatusModuleInit(&sm, cfg.statusName)
 
 	// Start daemon
 	gi := goInfo.GetInfo()
 	LogInf(logContextMain, "== Bender test ==")
 	LogInf(logContextMain, "Run on: %v", gi)
-	DaemonInit(cfg.daemonLogLevel, "0.0.0.0", "8080")
+	//DaemonInit(cfg.daemonLogLevel, "0.0.0.0", "8080")
 }

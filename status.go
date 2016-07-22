@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Status struct {
+type StatusModule struct {
 	State     serverStatus
 	Name      string
 	Timestamp time.Time
@@ -20,10 +20,6 @@ type StatusInterface interface {
 	GetRunningJob() (Job, error)
 }
 
-type StatusModule struct {
-	Current Status
-}
-
 type serverStatus string
 
 const (
@@ -34,25 +30,25 @@ const (
 // SetState stores the provided Job into a map and updates the server idle
 // status
 func (s *StatusModule) SetState(job Job) {
-	s.Current.Jobs[job.Uuid] = job
+	s.Jobs[job.Uuid] = job
 	if job.Status == JOB_WORKING {
-		s.Current.State = SERVER_WORKING
+		s.State = SERVER_WORKING
 		return
 	}
 
-	s.Current.State = SERVER_IDLE
+	s.State = SERVER_IDLE
 	return
 }
 
 // GetState returns the current idle status and the number of stored jobs
 func (s *StatusModule) GetState() (serverStatus, int) {
-	return s.Current.State, len(s.Current.Jobs)
+	return s.State, len(s.Jobs)
 }
 
 // GetJob looks for a job with the specified uuid and returns its pointer
 // or 'nil' if not found
 func (s *StatusModule) GetJob(uuid string) Job {
-	job := s.Current.Jobs[uuid]
+	job := s.Jobs[uuid]
 	return job
 }
 
@@ -60,7 +56,7 @@ func (s *StatusModule) GetJob(uuid string) Job {
 // of their poiners
 func (s *StatusModule) GetJobs(name string) []Job {
 	var jobs []Job
-	for _, v := range s.Current.Jobs {
+	for _, v := range s.Jobs {
 		if v.Name == name {
 			jobs = append(jobs, v)
 		}
@@ -72,7 +68,7 @@ func (s *StatusModule) GetJobs(name string) []Job {
 // GetRunningJob returns a pointer to the currently running job or 'nil' if
 // there is no running job
 func (s *StatusModule) GetRunningJob() (Job, error) {
-	for _, v := range s.Current.Jobs {
+	for _, v := range s.Jobs {
 		if v.Status == JOB_WORKING {
 			return v, nil
 		}
@@ -82,13 +78,9 @@ func (s *StatusModule) GetRunningJob() (Job, error) {
 }
 
 // initStatus initializes the status module
-func StatusModuleInit(name string) StatusModule {
-	sm = StatusModule{}
-	sm.Current = Status{
-		State:     SERVER_IDLE,
-		Name:      name,
-		Jobs:      make(map[string]Job),
-		Timestamp: time.Now()}
-
-	return sm
+func StatusModuleInit(sm *StatusModule, name string) {
+	sm.State = SERVER_IDLE
+	sm.Name = name
+	sm.Jobs = make(map[string]Job)
+	sm.Timestamp = time.Now()
 }

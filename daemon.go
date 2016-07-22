@@ -12,6 +12,7 @@ import (
 )
 
 var logContextDaemon LoggerContext
+var daemon_localStatus *StatusModule
 
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
@@ -36,7 +37,7 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	timeout := 600
 	params := r.Form
 
-	status, _ := sm.GetState()
+	status, _ := daemon_localStatus.GetState()
 	if status == SERVER_WORKING {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -67,7 +68,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 
 	if r.RequestURI == "/state" {
 		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
-		js, err := json.Marshal(sm.Current)
+		js, err := json.Marshal(daemon_localStatus)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			LogErr(logContextDaemon, "json creation failed")
@@ -82,7 +83,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", r.PathParams["script"], r.RemoteAddr)
 
 		response := statusJobs{
-			Jobs: sm.GetJobs(r.PathParams["script"])}
+			Jobs: daemon_localStatus.GetJobs(r.PathParams["script"])}
 		js, err := json.Marshal(response)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -94,7 +95,10 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func DaemonInit(logLevel int, address string, port string) {
+func DaemonInit(sm *StatusModule, logLevel int, address string, port string) {
+
+	daemon_localStatus = sm
+
 	// init logger
 	logContextDaemon = LoggerContext{
 		level: logLevel,
