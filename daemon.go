@@ -30,6 +30,7 @@ func (c *Context) SetDefaults(w web.ResponseWriter, r *web.Request, next web.Nex
 
 // RunHandler handles /run requests
 func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive RUN[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
 
 	name := r.PathParams["script"]
@@ -95,13 +96,13 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func DaemonInit(sm *StatusModule, logLevel int, address string, port string) {
+func DaemonInit(sm *StatusModule, cm *ConfigModule, address string, port string) {
 
 	daemon_localStatus = sm
 
 	// init logger
 	logContextDaemon = LoggerContext{
-		level: logLevel,
+		level: cm.GetLogLevel("daemon", 3),
 		name:  "DAEMON"}
 	LogInf(logContextDaemon, "START")
 
