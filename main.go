@@ -20,5 +20,5 @@ func main() {
 	gi := goInfo.GetInfo()
 	LogInf(logContextMain, "== Bender test ==")
 	LogInf(logContextMain, "Run on: %v", gi)
-	DaemonInit(&sm, cm.GetLogLevel("daemon", 3), "0.0.0.0", "8080")
+	DaemonInit(&sm, &cm, "0.0.0.0", "8080")
 }
