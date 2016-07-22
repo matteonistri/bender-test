@@ -4,7 +4,7 @@ import ("time"
         "os/exec"
         "strings"
         "io"
-        "os"
+        "io/ioutil"
         "path/filepath"
         "bufio")
 
@@ -93,8 +93,10 @@ func FakeState(job *Job){
 
 var cmd = exec.Command("")
 var outChan = make(chan string, 1)
+var syncChan = make(chan bool)
 var logContextRunner LoggerContext
 
+//Initialize the script command
 func Run(job *Job, script, uuid, args string) int{
     job.Name = script
     job.Uuid = uuid
@@ -103,20 +105,12 @@ func Run(job *Job, script, uuid, args string) int{
 
     var exit int
 
-    if HasScript(job.Name){
+    if name, exist := HasScript(job.Name); exist{
+        script_path := filepath.Join(GetScriptsDir(), name)
         params := strings.Split(job.Params, " ")
-        script_path := filepath.Join(GetScriptsDir(), job.Name)
-        cmd = exec.Command(script_path, params...)
-        go func(){
-            LogInf(logContextRunner, "Execution started...")
-            cmd.Start()
-            err := cmd.Wait()
-            LogInf(logContextRunner, "Execution finished")
 
-            if err != nil{
-                LogErr(logContextRunner, "Error occurred during execution")
-            }
-        }()
+        cmd = exec.Command(script_path, params...)
+        go Start()
         exit = 0
     } else {
         LogErr(logContextRunner, "Script does not exist")
@@ -126,20 +120,44 @@ func Run(job *Job, script, uuid, args string) int{
     return exit
 }
 
-//Check if a script exists
-func HasScript(script string) bool {
-    path := filepath.Join(GetScriptsDir(), script)
+//Run the command
+func Start(){
+    <- syncChan
+    time.Sleep(100 * time.Millisecond)
+    cmd.Start()
+    LogInf(logContextRunner, "Execution started...")
+    err := cmd.Wait()
+    LogInf(logContextRunner, "Execution finished")
 
-    if _, err := os.Stat(path); err == nil {
-        return true
+    if err != nil{
+        LogErr(logContextRunner, "Error occurred during execution")
     }
-    return false
+}
+
+//Check if a script exists
+func HasScript(script string) (string, bool) {
+    files, err := ioutil.ReadDir(GetScriptsDir())
+    var exist = false
+    var name = ""
+
+    if err != nil{
+        LogErr(logContextRunner, "No scripts directory found")
+    } else {
+        for _, file := range files{
+            if strings.Contains(file.Name(), script){
+                name = file.Name()
+                exist = true
+            }
+        }
+    }
+    return name, exist
 }
 
 
 //Return the current stdout and stderr
 func Log() *chan string{
     go func(){
+        syncChan <- true
         stdout, err := cmd.StdoutPipe()
         stderr, err := cmd.StderrPipe()
         multi := io.MultiReader(stdout, stderr)
@@ -149,8 +167,9 @@ func Log() *chan string{
             LogErr(logContextRunner, "Error occurred while reading stdout/stderr")
         }
 
-        for scanner.Scan() {
-            outChan <- scanner.Text()
+        for scanner.Scan(){
+            out := scanner.Text()
+            outChan <- out
         }
     }()
 

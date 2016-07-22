@@ -13,6 +13,7 @@ type Params struct{
 	timeout int
 }
 
+//Receive a job from channel and call the runner to execute it
 func init(){
 	logContextWorker = LoggerContext{
 		name: "WORKER",
@@ -31,16 +32,16 @@ func init(){
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
 				for time.Since(start) <  timeout{
-					State(&job)
-					UpdateState(job)
-					if job.Status != JOB_WORKING{
-						break
-					}
 					select{
 						case out := <-logChan:
 							fmt.Println(out)
 						default:
-							time.Sleep(500 * time.Millisecond)
+							time.Sleep(20 * time.Millisecond)
+					}
+					State(&job)
+					UpdateState(job)
+					if job.Status != JOB_WORKING{
+						break
 					}
 				}
 
@@ -55,6 +56,7 @@ func init(){
     }()
 }
 
+//Send a new job on the channel
 func Submit(name, uuid, args string, timeout int){
 	params := Params{
 		name:    name,
