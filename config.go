@@ -4,68 +4,62 @@ import "gopkg.in/ini.v1"
 
 var logContextConfig LoggerContext
 
-type config struct {
-	generalLogLevel int
-	daemonLogLevel  int
-	statusName      string
+type ConfigInterface interface {
+	Get(section string, key string, defValue string) string
+	GetLogLevel(section string, defValue int) int
 }
 
-func ConfigInit(cfgFileName string) config {
+type ConfigModule struct {
+	conf *ini.File
+}
+
+// ConfigInit initializes the config module
+func ConfigInit(cm *ConfigModule, filename string) {
 	// init LogContex
 	logContextConfig = LoggerContext{
 		level: 1,
 		name:  "CONFIG"}
 
-	// set defaults
-	conf := config{
-		generalLogLevel: 3,
-		daemonLogLevel:  3,
-		statusName:      "bender"}
-
 	// attempt to load config file
-	cfgFileName += ".cfg"
-	cfg, err := ini.Load(cfgFileName)
+	filename += ".cfg"
+	var err error
+	cm.conf, err = ini.Load(filename)
 	if err != nil {
 		LogWar(logContextConfig, "No config file found: using defaults")
-		return conf
+		cm.conf = ini.Empty()
+		return
 	}
 
-	// parse config file and set config
-	sections := cfg.Sections()
-	for _, s := range sections {
-		switch s.Name() {
-		case "general":
-			if s.HasKey("loglevel") {
-				v, err := s.Key("loglevel").Int()
-				if err != nil {
-					LogWar(logContextConfig, "cannot parse key log/level: %s", err)
-				} else {
-					if v >= 0 && v <= 3 {
-						conf.generalLogLevel = v
-					} else {
-						LogWar(logContextConfig, "invalid value for key log/level: %d", v)
-					}
-				}
-			}
-		case "daemon":
-			if s.HasKey("loglevel") {
-				v, err := s.Key("loglevel").Int()
-				if err != nil {
-					LogWar(logContextConfig, "cannot parse key log/level: %s", err)
-				} else {
-					if v >= 0 && v <= 3 {
-						conf.daemonLogLevel = v
-					} else {
-						LogWar(logContextConfig, "invalid value for key log/level: %d", v)
-					}
-				}
-			}
-		case "status":
-			if s.HasKey("servername") {
-				conf.statusName = s.Key("servername").String()
-			}
-		}
+	return
+}
+
+func (cm *ConfigModule) Get(section string, key string, defValue string) string {
+	value, err := cm.conf.Section(section).GetKey(key)
+	if err != nil {
+		LogWar(logContextConfig, "No value for key %s found: using default %s", key, defValue)
+		return defValue
 	}
 
-	return conf
+	return value.String()
+}
+
+func (cm *ConfigModule) GetLogLevel(section string, defValue int) int {
+	value, err := cm.conf.Section(section).GetKey("loglevel")
+	if err != nil {
+		LogWar(logContextConfig, "No value for loglevel found: using default %s", defValue)
+		return defValue
+	}
+
+	v, err := value.Int()
+	if err != nil {
+		LogWar(logContextConfig, "Cannot parse loglevel value: using default. %s", err)
+		return defValue
+	}
+
+	if v < 0 || v > 3 {
+		LogWar(logContextConfig, "Invalid value for key loglevel %d: using default", value)
+		return defValue
+	}
+
+	return v
 }

@@ -6,16 +6,17 @@ var logContextMain LoggerContext
 
 func main() {
 	var sm StatusModule
+	var cm ConfigModule
 
 	// init modules
 	LoggerModuleInit("bender-test")
-	cfg := ConfigInit("bender-test")
+	ConfigInit(&cm, "bender-test")
 
 	logContextMain = LoggerContext{
 		name:  "MAIN",
-		level: cfg.generalLogLevel}
+		level: cm.GetLogLevel("general", 3)}
 
-	StatusModuleInit(&sm, cfg.statusName)
+	StatusModuleInit(&sm, cm.Get("status", "servername", "bender"))
 
 	// Start daemon
 	gi := goInfo.GetInfo()
