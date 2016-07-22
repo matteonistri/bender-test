@@ -30,6 +30,7 @@ func (c *Context) SetDefaults(w web.ResponseWriter, r *web.Request, next web.Nex
 
 // RunHandler handles /run requests
 func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive RUN[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
 
 	name := r.PathParams["script"]
