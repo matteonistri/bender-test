@@ -42,7 +42,11 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	_, err := os.Stat(dir)
 	if err != nil {
 		LogWar(logContextReport, "No dir %s found, making it", dir)
-		os.Mkdir(dir, 0775)
+		err = os.Mkdir(dir, 0775)
+		if err != nil {
+			LogErr(logContextReport, "Unable to make dir %s", dir)
+			panic(err)
+		}
 	}
 
 	// create and open log file
@@ -60,7 +64,23 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 }
 
 func (ctx *ReportContext) Update(b []byte) {
+	w := bufio.NewWriter(ctx.file)
+	_, err := w.Write(b)
+	if err != nil {
+		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
+		panic(err)
+	}
+	w.Flush()
+}
 
+func (ctx *ReportContext) Append(s string) {
+	w := bufio.NewWriter(ctx.file)
+	_, err := w.WriteString(s)
+	if err != nil {
+		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
+		panic(err)
+	}
+	w.Flush()
 }
 
 func (ctx *ReportContext) Report() bytes.Buffer {
