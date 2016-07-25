@@ -96,6 +96,7 @@ func FakeState(job *Job) {
 var cmd = exec.Command("")
 var outChan = make(chan string, 1)
 var syncChan = make(chan bool)
+var endReadStart = make(chan bool)
 var logContextRunner LoggerContext
 
 //Initialize the script command
@@ -127,6 +128,7 @@ func Start() {
 	time.Sleep(100 * time.Millisecond)
 	cmd.Start()
 	LogInf(logContextRunner, "Execution started...")
+	<-endReadStart
 	err := cmd.Wait()
 	LogInf(logContextRunner, "Execution finished")
 
@@ -171,6 +173,11 @@ func Log() *chan string {
 			out := scanner.Text()
 			outChan <- out
 		}
+
+		endReadStart <- true
+		LogDeb(logContextRunner, "finished reading, sent sync to chan")
+		endReadLog <- true
+		LogDeb(logContextRunner, "finished reading, sent sync to chan tmp")
 	}()
 
 	return &outChan

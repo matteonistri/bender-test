@@ -8,6 +8,8 @@ import (
 
 var __SubmitChannel chan Params
 var logContextWorker LoggerContext
+var worker_localStatus *StatusModule
+var endReadLog = make(chan bool)
 
 type Params struct {
 	name    string
@@ -34,18 +36,19 @@ func init() {
 			if ret == 0 {
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
+			timeToLive:
 				for time.Since(start) < timeout {
 					select {
 					case out := <-logChan:
 						fmt.Println(out)
+					case <-endReadLog:
+						LogDeb(logContextWorker, "received end of read sync")
+						break timeToLive
 					default:
 						time.Sleep(20 * time.Millisecond)
 					}
 					State(&job)
-					//UpdateState(job)
-					if job.Status != JOB_WORKING {
-						break
-					}
+					worker_localStatus.SetState(job)
 				}
 
 				if time.Since(start) > timeout {
@@ -78,6 +81,6 @@ func Submit(name, uuid string, argsMap url.Values, timeout int) {
 	__SubmitChannel <- params
 }
 
-func UpdateState(job Job) {
-	fmt.Println(job.Status)
+func WorkerInit(sm *StatusModule) {
+	worker_localStatus = sm
 }
