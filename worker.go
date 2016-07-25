@@ -4,6 +4,7 @@ import ("time"
 		"fmt")
 
 var __SubmitChannel chan Params
+var logContextWorker LoggerContext
 
 type Params struct{
 	name string
@@ -12,7 +13,12 @@ type Params struct{
 	timeout int
 }
 
+//Receive a job from channel and call the runner to execute it
 func init(){
+	logContextWorker = LoggerContext{
+		name: "WORKER",
+		level: 3}
+
 	__SubmitChannel = make(chan Params)
 	go func(){
 		for {
@@ -20,24 +26,29 @@ func init(){
 			var job Job
 
 			ret := Run(&job, params.name, params.uuid, params.args)
+			logChan := *Log()
 
 			if ret == 0 {
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
-
 				for time.Since(start) <  timeout{
-					fmt.Println("Reading from stdout", Log(&job))
+					select{
+						case out := <-logChan:
+							fmt.Println(out)
+						default:
+							time.Sleep(20 * time.Millisecond)
+					}
 					State(&job)
 					UpdateState(job)
-					if job.Status == JOB_COMPLETED{
+					if job.Status != JOB_WORKING{
 						break
 					}
 				}
 
 				if time.Since(start) >  timeout{
-					job.Status = JOB_FAILED
+	 				LogWar(logContextWorker, "Execution timed out")
+	 				job.Status = JOB_FAILED
 				}
-
 			} else {
 				job.Status = JOB_NOT_FOUND
 			}
@@ -45,6 +56,7 @@ func init(){
     }()
 }
 
+//Send a new job on the channel
 func Submit(name, uuid, args string, timeout int){
 	params := Params{
 		name:    name,
