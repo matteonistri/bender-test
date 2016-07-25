@@ -96,7 +96,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
-func DaemonInit(sm *StatusModule, cm *ConfigModule, address string, port string) {
+func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 
 	daemon_localStatus = sm
 
@@ -116,6 +116,8 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule, address string, port string)
 	router.Get("/state/:script", (*Context).StatusHandler)
 
 	// start http server
+	address := cm.Get("daemon", "address", "0.0.0.0")
+	port := cm.Get("daemon", "port", "8080")
 	LogInf(logContextDaemon, "Listening on %s:%s", address, port)
 	LogFatal(logContextDaemon, http.ListenAndServe(address+":"+port, router))
 }
