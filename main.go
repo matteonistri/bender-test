@@ -15,6 +15,7 @@ func main() {
 		level: cm.GetLogLevel("general", 3)}
 
 	StatusModuleInit(&sm, &cm)
+	WorkerInit(&sm)
 
 	// Start daemon
 	gi := goInfo.GetInfo()

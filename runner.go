@@ -1,12 +1,14 @@
 package main
 
-import ("time"
-        "os/exec"
-        "strings"
-        "io"
-        "io/ioutil"
-        "path/filepath"
-        "bufio")
+import (
+	"bufio"
+	"io"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+)
 
 type JobStatus string
 
@@ -21,7 +23,7 @@ const (
 
 type Job struct {
 	Name    string
-	Params  string
+	Params  []string
 	Uuid    string
 	Created time.Time
 	Status  JobStatus
@@ -39,150 +41,155 @@ func SetScriptsDir(dir string) {
 	scriptsDir = dir
 }
 
-func init(){
-    SetScriptsDir("scripts")
-    logContextRunner = LoggerContext{
-        name: "RUNNER",
-        level: 3}
+func init() {
+	SetScriptsDir("scripts")
+	logContextRunner = LoggerContext{
+		name:  "RUNNER",
+		level: 3}
 }
 
-func FakeRun(job *Job, script, uuid, args string) int{
-    job.Name = script
-    job.Uuid = uuid
-    job.Params = args
-    job.Status = JOB_WORKING
+func FakeRun(job *Job, script, uuid string, args []string) int {
+	job.Name = script
+	job.Uuid = uuid
+	job.Params = args
+	job.Status = JOB_WORKING
 
-    var exit int
+	var exit int
 
-    if FakeHasScript(job.Name){
-        run = true
-        go func(){
-            time.Sleep(3 * time.Second)
-            //execution...
-            run = false
-        }()
-        exit = 0
-    } else {
-        exit = -1
-    }
+	if FakeHasScript(job.Name) {
+		run = true
+		go func() {
+			time.Sleep(3 * time.Second)
+			//execution...
+			run = false
+		}()
+		exit = 0
+	} else {
+		exit = -1
+	}
 
-    return exit
+	return exit
 }
 
 //Check if a script exists
-func FakeHasScript(script string) bool{
-    return true
+func FakeHasScript(script string) bool {
+	return true
 }
 
 //Return the current stdout and stderr
-func FakeLog(job *Job) string{
-    buf := make([]byte, 100)
-    //reading from stdout pipe
-    return string(buf)
+func FakeLog(job *Job) string {
+	buf := make([]byte, 100)
+	//reading from stdout pipe
+	return string(buf)
 }
 
 //Handle the status of script
-func FakeState(job *Job){
-    if run {
-        job.Status = JOB_WORKING
-    } else {
-        job.Status = JOB_COMPLETED
-    }
+func FakeState(job *Job) {
+	if run {
+		job.Status = JOB_WORKING
+	} else {
+		job.Status = JOB_COMPLETED
+	}
 
 }
 
 var cmd = exec.Command("")
 var outChan = make(chan string, 1)
 var syncChan = make(chan bool)
+var endReadStart = make(chan bool)
 var logContextRunner LoggerContext
 
 //Initialize the script command
-func Run(job *Job, script, uuid, args string) int{
-    job.Name = script
-    job.Uuid = uuid
-    job.Params = args
-    job.Status = JOB_WORKING
+func Run(job *Job, script, uuid string, args []string) int {
+	job.Name = script
+	job.Uuid = uuid
+	job.Params = args
+	job.Status = JOB_WORKING
 
-    var exit int
+	var exit int
 
-    if name, exist := HasScript(job.Name); exist{
-        script_path := filepath.Join(GetScriptsDir(), name)
-        params := strings.Split(job.Params, " ")
+	if name, exist := HasScript(job.Name); exist {
+		script_path := filepath.Join(GetScriptsDir(), name)
 
-        cmd = exec.Command(script_path, params...)
-        go Start()
-        exit = 0
-    } else {
-        LogErr(logContextRunner, "Script does not exist")
-        exit = -1
-    }
+		cmd = exec.Command(script_path, job.Params...)
+		go Start()
+		exit = 0
+	} else {
+		LogErr(logContextRunner, "Script does not exist")
+		exit = -1
+	}
 
-    return exit
+	return exit
 }
 
 //Run the command
-func Start(){
-    <- syncChan
-    time.Sleep(100 * time.Millisecond)
-    cmd.Start()
-    LogInf(logContextRunner, "Execution started...")
-    err := cmd.Wait()
-    LogInf(logContextRunner, "Execution finished")
+func Start() {
+	<-syncChan
+	time.Sleep(100 * time.Millisecond)
+	cmd.Start()
+	LogInf(logContextRunner, "Execution started...")
+	<-endReadStart
+	err := cmd.Wait()
+	LogInf(logContextRunner, "Execution finished")
 
-    if err != nil{
-        LogErr(logContextRunner, "Error occurred during execution")
-    }
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred during execution")
+	}
 }
 
 //Check if a script exists
 func HasScript(script string) (string, bool) {
-    files, err := ioutil.ReadDir(GetScriptsDir())
-    var exist = false
-    var name = ""
+	files, err := ioutil.ReadDir(GetScriptsDir())
+	var exist = false
+	var name = ""
 
-    if err != nil{
-        LogErr(logContextRunner, "No scripts directory found")
-    } else {
-        for _, file := range files{
-            if strings.Contains(file.Name(), script){
-                name = file.Name()
-                exist = true
-            }
-        }
-    }
-    return name, exist
+	if err != nil {
+		LogErr(logContextRunner, "No scripts directory found")
+	} else {
+		for _, file := range files {
+			if strings.Contains(file.Name(), script) {
+				name = file.Name()
+				exist = true
+			}
+		}
+	}
+	return name, exist
 }
 
-
 //Return the current stdout and stderr
-func Log() *chan string{
-    go func(){
-        syncChan <- true
-        stdout, err := cmd.StdoutPipe()
-        stderr, err := cmd.StderrPipe()
-        multi := io.MultiReader(stdout, stderr)
-        scanner := bufio.NewScanner(multi)
+func Log() *chan string {
+	go func() {
+		syncChan <- true
+		stdout, err := cmd.StdoutPipe()
+		stderr, err := cmd.StderrPipe()
+		multi := io.MultiReader(stdout, stderr)
+		scanner := bufio.NewScanner(multi)
 
-        if err != nil{
-            LogErr(logContextRunner, "Error occurred while reading stdout/stderr")
-        }
+		if err != nil {
+			LogErr(logContextRunner, "Error occurred while reading stdout/stderr")
+		}
 
-        for scanner.Scan(){
-            out := scanner.Text()
-            outChan <- out
-        }
-    }()
+		for scanner.Scan() {
+			out := scanner.Text()
+			outChan <- out
+		}
 
-    return &outChan
+		endReadStart <- true
+		LogDeb(logContextRunner, "finished reading, sent sync to chan")
+		endReadLog <- true
+		LogDeb(logContextRunner, "finished reading, sent sync to chan tmp")
+	}()
+
+	return &outChan
 }
 
 //Handle the status of script
 func State(job *Job) {
-    if cmd.ProcessState == nil{
-        job.Status = JOB_WORKING
-    } else if cmd.ProcessState.Success(){
-        job.Status = JOB_COMPLETED
-    } else {
-        job.Status = JOB_FAILED
-    }
+	if cmd.ProcessState == nil {
+		job.Status = JOB_WORKING
+	} else if cmd.ProcessState.Success() {
+		job.Status = JOB_COMPLETED
+	} else {
+		job.Status = JOB_FAILED
+	}
 }

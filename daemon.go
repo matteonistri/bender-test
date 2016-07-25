@@ -34,8 +34,8 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	r.ParseForm()
 
 	name := r.PathParams["script"]
-	uuid := uuid.NewV4()
-	timeout := 600
+	uuid := uuid.NewV4().String()
+	timeout := 10000
 	params := r.Form
 
 	status, _ := daemon_localStatus.GetState()
@@ -46,12 +46,7 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	// -- replace with submit --
-	fmt.Fprintf(w, "TEST_NAME: %s\n", name)
-	fmt.Fprintf(w, "UUID: %s\n", uuid)
-	fmt.Fprintf(w, "TIMEOUT: %d\n", timeout)
-	fmt.Fprintf(w, "PARAMS: %s\n", params)
-	// -------------------------
+	Submit(name, uuid, params, timeout)
 }
 
 // LogHandler handles /log requests
