@@ -5,7 +5,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 	"net/http"
+	"html/template"
 
 	"github.com/gocraft/web"
 	"github.com/satori/go.uuid"
@@ -91,6 +93,18 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
+func (c *Context) HomeHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive HOME[%v] request from: %v", "Daemon", r.RemoteAddr)
+	job := Job{Name: "hellosleep",
+			   Uuid: "acfjsif-909D",
+			   Created: time.Now(),
+			   Timeout: 54}
+
+	t := template.New("New template")
+	t, _ = template.ParseFiles("html/home.html")
+	t.Execute(w, job)
+}
+
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 
 	daemon_localStatus = sm
@@ -109,6 +123,7 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
 	router.Get("/state", (*Context).StatusHandler)
 	router.Get("/state/:script", (*Context).StatusHandler)
+	router.Get("/home", (*Context).HomeHandler)
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")
