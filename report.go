@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,14 +21,14 @@ type ReportContext struct {
 	uuid      string
 	timestamp time.Time
 	appnd     bool
-	file      *os.File
+	file      string
 }
 
 type ReportInterface interface {
 	New(name, uuid string, timestamp time.Time, appnd bool)
 	Update(b []byte)
-	Append(s string)
-	Report() bufio.Reader
+	UpdateString(s string)
+	Report() []byte
 }
 
 func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) {
@@ -53,42 +53,67 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	now := time.Now()
 	fname := fmt.Sprintf("%d.%d.%d-%d.%d.%d-%s.log", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), uuid)
 	fpath := filepath.Join(dir, fname)
-	f, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0666)
+
+	var f *os.File
+	if appnd {
+		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_APPEND, 0666)
+	} else {
+		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0666)
+	}
 	if err != nil {
 		LogErr(logContextReport, "Cannot create file %s", fpath)
 		panic(err)
 	}
 
-	ctx.file = f
+	ctx.file = fpath
+	defer f.Close()
 	return
 }
 
 func (ctx *ReportContext) Update(b []byte) {
-	w := bufio.NewWriter(ctx.file)
-	_, err := w.Write(b)
+	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		LogErr(logContextReport, "Cannot open file %s", ctx.file)
+		panic(err)
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	_, err = w.Write(b)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
+
 	w.Flush()
 }
 
-func (ctx *ReportContext) Append(s string) {
-	w := bufio.NewWriter(ctx.file)
-	_, err := w.WriteString(s)
+func (ctx *ReportContext) UpdateString(s string) {
+	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		LogErr(logContextReport, "Cannot open file %s", ctx.file)
+		panic(err)
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	_, err = w.WriteString(s)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
+
 	w.Flush()
 }
 
-func (ctx *ReportContext) Report() bytes.Buffer {
-	// read log file
-	// make it a buffer
-	// return it
-	var b bytes.Buffer
-	return b
+func (ctx *ReportContext) Report() []byte {
+	out, err := ioutil.ReadFile(ctx.file)
+	if err != nil {
+		LogErr(logContextReport, "IO error while reading file %s", ctx.file)
+		panic(err)
+	}
+
+	return out
 }
 
 func ReportInit(cm *ConfigModule) {
