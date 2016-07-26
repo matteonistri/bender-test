@@ -46,7 +46,7 @@ func (cm *ConfigModule) Get(section string, key string, defValue string) string 
 func (cm *ConfigModule) GetLogLevel(section string, defValue int) int {
 	value, err := cm.conf.Section(section).GetKey("loglevel")
 	if err != nil {
-		LogWar(logContextConfig, "No value for loglevel found: using default %s", defValue)
+		LogWar(logContextConfig, "No value for loglevel found: using default %d", defValue)
 		return defValue
 	}
 

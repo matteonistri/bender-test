@@ -16,6 +16,7 @@ func main() {
 
 	StatusModuleInit(&sm, &cm)
 	WorkerInit(&sm)
+	ReportInit(&cm)
 
 	// Start daemon
 	gi := goInfo.GetInfo()
