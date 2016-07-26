@@ -55,6 +55,7 @@ func init() {
 					LogWar(logContextWorker, "Execution timed out")
 					job.Status = JOB_FAILED
 				}
+				worker_localStatus.SetState(job)
 			} else {
 				job.Status = JOB_NOT_FOUND
 			}
