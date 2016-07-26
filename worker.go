@@ -37,7 +37,8 @@ func init() {
 
 				rep := &ReportContext{}
 				rep.New(params.name, params.uuid, start, true)
-				Log(rep)
+				logChan := *Log()
+				rep.CaptureOutputString(logChan)
 
 			timeToLive:
 				for time.Since(start) < timeout {

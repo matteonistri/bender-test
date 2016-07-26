@@ -157,7 +157,7 @@ func HasScript(script string) (string, bool) {
 }
 
 //Return the current stdout and stderr
-func Log(rep *ReportContext) {
+func Log() *chan string {
 	go func() {
 		syncChan <- true
 		stdout, err := cmd.StdoutPipe()
@@ -171,7 +171,7 @@ func Log(rep *ReportContext) {
 
 		for scanner.Scan() {
 			out := scanner.Text()
-			rep.UpdateString(out)
+			outChan <- out
 		}
 
 		endReadStart <- true
@@ -180,7 +180,7 @@ func Log(rep *ReportContext) {
 		LogDeb(logContextRunner, "finished reading, sent sync to chan tmp")
 	}()
 
-	return
+	return &outChan
 }
 
 //Handle the status of script

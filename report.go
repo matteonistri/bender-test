@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +20,7 @@ type ReportContext struct {
 	uuid      string
 	timestamp time.Time
 	appnd     bool
-	file      string
+	file      *os.File
 }
 
 type ReportInterface interface {
@@ -37,7 +36,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	ctx.name = name
 	ctx.uuid = uuid
 	ctx.timestamp = timestamp
-	ctx.appnd = true
+	ctx.appnd = appnd
 
 	// make dir if it doesn't exist
 	dir := filepath.Join(report_localContext.path, name)
@@ -58,67 +57,58 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 
 	var f *os.File
 	if appnd {
-		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_APPEND, 0666)
+		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	} else {
-		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0666)
+		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_RDWR, 0666)
 	}
 	if err != nil {
 		LogErr(logContextReport, "Cannot create file %s", fpath)
 		panic(err)
 	}
 
-	ctx.file = fpath
-	defer f.Close()
+	ctx.file = f
 	return
 }
 
 // Update appends bytes to the log file
 func (ctx *ReportContext) Update(b []byte) {
-	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		LogErr(logContextReport, "Cannot open file %s", ctx.file)
-		panic(err)
-	}
-	defer f.Close()
-
-	w := bufio.NewWriter(f)
-	_, err = w.Write(b)
+	_, err := ctx.file.Write(b)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
-
-	w.Flush()
 }
 
 // UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
-	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		LogErr(logContextReport, "Cannot open file %s", ctx.file)
-		panic(err)
-	}
-	defer f.Close()
-
-	w := bufio.NewWriter(f)
-	_, err = w.WriteString(s)
+	_, err := ctx.file.WriteString(s)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
-
-	w.Flush()
 }
 
 // Report returns the content of the log file as bytes
 func (ctx *ReportContext) Report() []byte {
-	out, err := ioutil.ReadFile(ctx.file)
+	out, err := ioutil.ReadAll(ctx.file)
 	if err != nil {
 		LogErr(logContextReport, "IO error while reading file %s", ctx.file)
 		panic(err)
 	}
 
 	return out
+}
+
+// CaptureOutputString launches a go routine that listens on the specified
+// channel for strings to write to the log file
+func (ctx *ReportContext) CaptureOutputString(c chan string) {
+	go func() {
+		LogDeb(logContextReport, "Started capturing output")
+		for s := range c {
+			LogDeb(logContextReport, "String captured")
+			ctx.UpdateString(s)
+		}
+	}()
 }
 
 // ReportInit initializes the Report module
