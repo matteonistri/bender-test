@@ -28,6 +28,7 @@ type ReportInterface interface {
 	Update(b []byte)
 	UpdateString(s string)
 	Report() []byte
+	CaptureOutputString(c chan string)
 }
 
 // New fills a ReportContext struct attributes and creates the log file (as
