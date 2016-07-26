@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 )
@@ -31,16 +30,18 @@ func init() {
 			var job Job
 
 			ret := Run(&job, params.name, params.uuid, params.args)
-			logChan := *Log()
 
 			if ret == 0 {
 				start := time.Now()
 				timeout := time.Duration(params.timeout) * time.Millisecond
+
+				rep := &ReportContext{}
+				rep.New(params.name, params.uuid, start, true)
+				Log(rep)
+
 			timeToLive:
 				for time.Since(start) < timeout {
 					select {
-					case out := <-logChan:
-						fmt.Println(out)
 					case <-endReadLog:
 						LogDeb(logContextWorker, "received end of read sync")
 						break timeToLive
@@ -55,6 +56,7 @@ func init() {
 					LogWar(logContextWorker, "Execution timed out")
 					job.Status = JOB_FAILED
 				}
+
 				worker_localStatus.SetState(job)
 			} else {
 				job.Status = JOB_NOT_FOUND

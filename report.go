@@ -31,6 +31,8 @@ type ReportInterface interface {
 	Report() []byte
 }
 
+// New fills a ReportContext struct attributes and creates the log file (as
+// well as the parent directory, if not existent)
 func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) {
 	ctx.name = name
 	ctx.uuid = uuid
@@ -70,6 +72,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	return
 }
 
+// Update appends bytes to the log file
 func (ctx *ReportContext) Update(b []byte) {
 	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -88,6 +91,7 @@ func (ctx *ReportContext) Update(b []byte) {
 	w.Flush()
 }
 
+// UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
 	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -106,6 +110,7 @@ func (ctx *ReportContext) UpdateString(s string) {
 	w.Flush()
 }
 
+// Report returns the content of the log file as bytes
 func (ctx *ReportContext) Report() []byte {
 	out, err := ioutil.ReadFile(ctx.file)
 	if err != nil {
@@ -116,6 +121,7 @@ func (ctx *ReportContext) Report() []byte {
 	return out
 }
 
+// ReportInit initializes the Report module
 func ReportInit(cm *ConfigModule) {
 	logContextReport = LoggerContext{
 		level: cm.GetLogLevel("report", 3),
