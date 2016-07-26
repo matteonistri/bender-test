@@ -1,22 +1,54 @@
 <html>
 	<head>
+		<script src="http://code.jquery.com/jquery-latest.js"></script>
 		<title>Bender-Test</title>
 	</head>
 
 	<body>
-		<h1> Hello my dear! Here you can:</h1>
+		<h1>Welcome to Bender-Test</h1>
+		<h2>Run your scripts, watch your report!<h2>
+		<p>Here you can:</p>
 		<ul>
-			<li> Buy waffles </li>
-			<li> Feed your homing pigeon </li>
-			<li> Nuke your enemies' home  </li>
-			<li> And many other wonderful features </li>
+			<li>Run your tests</li>
+			<li>Get live output</li>
+			<li>Watch previous reports</li>
+			<li>And many other wonderful features</li>
 		</ul>
-		<div>
-		<p> This is a generic script </p>
-		<p> Name: {{.Name}} </p>
-		<p> UUID: {{.Uuid}} </p>
-		<p> Created: {{.Created}} </p>
-		<p> Timeout: {{.Timeout}} </p>
+
+		<input id="script" type="text">
+		<input id="run" type='button' value='Run!'> <br>
+
+		<p style="float:left">Server Status:</p>
+
+		<div id="serverstatus" style="float:left">
+			<p style="color:green">idle</p>
 		</div>
 	</body>
 </html>
+
+<script type="text/javascript">
+$(document).ready(function() {
+	$('#run').click(function() {
+		var script = document.getElementById('script').value
+		$.ajax({
+			url: 'run/' + script,
+			type: 'post'
+		});
+	});
+	setInterval("CheckStatus()", 100);
+});
+
+function CheckStatus() {
+	$.ajax({
+		url: '/state',
+		type: 'post',
+		dataType: 'json',
+		success: function(status) {
+			if (status.State == "working")
+				$("#serverstatus").html("<p style='color:red'>" + status.State + "</p>")
+			else
+				$("#serverstatus").html("<p style='color:green'>" + status.State + "</p>")
+		}
+	});
+}
+</script>

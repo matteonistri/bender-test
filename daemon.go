@@ -118,12 +118,12 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	// init http handlers
 	router := web.New(Context{})
 	router.Middleware((*Context).SetDefaults)
-	router.Get("/run/:script", (*Context).RunHandler)
+	router.Post("/run/:script", (*Context).RunHandler)
 	router.Get("/log/script/:script", (*Context).LogHandler)
 	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
-	router.Get("/state", (*Context).StatusHandler)
+	router.Post("/state", (*Context).StatusHandler)
 	router.Get("/state/:script", (*Context).StatusHandler)
-	router.Get("/home", (*Context).HomeHandler)
+	router.Get("/", (*Context).HomeHandler)
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")
