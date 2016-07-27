@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -164,13 +165,27 @@ func (rp *ReportPub) List(name string) ([][]string, error) {
 		err := errors.New("Canno stat " + name)
 		return nil, err
 	}
-	LogDeb(logContextReport, "-- dir: %s --", dir)
+
+	// build list from file name timestamp-uuid
 	for _, file := range files {
 		//		f := make([]string, 2)
 		LogDeb(logContextReport, "Found file: %s", file.Name())
-	}
+		x := strings.Split(file.Name(), "-")
+		tr := x[:2]
+		id := x[3:]
 
-	// build list from file name timestamp-uuid
+		timestamp := strings.Join(tr, "-")
+		uuid := strings.Join(id, "-")
+		uuid = string(strings.Split(uuid, ".")[0])
+
+		LogDeb(logContextReport, "  -timestamp: %s", timestamp)
+		LogDeb(logContextReport, "  -uuid: %s", uuid)
+
+		t := make([]string, 2)
+		t[0] = uuid
+		t[1] = timestamp
+		out = append(out, t)
+	}
 
 	return out, nil
 }
@@ -193,8 +208,4 @@ func ReportInit(cm *ConfigModule) {
 
 	report_localContext = ReportLocalContext{
 		path: cm.Get("report", "dir", "logs")}
-
-	//debug
-	x := &ReportPub{}
-	_, _ = x.List("sleep")
 }
