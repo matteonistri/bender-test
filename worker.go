@@ -38,11 +38,12 @@ func init() {
 				rep := &ReportContext{}
 				rep.New(params.name, params.uuid, start, true)
 				logChan := *Log()
-				rep.CaptureOutputString(logChan)
 
 			timeToLive:
 				for time.Since(start) < timeout {
 					select {
+					case m := <-logChan:
+						rep.UpdateString(m)
 					case <-endReadLog:
 						LogDeb(logContextWorker, "received end of read sync")
 						break timeToLive
