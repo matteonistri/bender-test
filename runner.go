@@ -193,3 +193,22 @@ func State(job *Job) {
 		job.Status = JOB_FAILED
 	}
 }
+
+func List() []string{
+    files, err := ioutil.ReadDir(GetScriptsDir())
+    var scripts []string
+
+    if err != nil {
+        LogErr(logContextRunner, "No scripts directory found")
+    } else {
+        for _, file := range files {
+            n := strings.LastIndexByte(file.Name(), '.')
+            if n > 0 {
+                scripts = append(scripts, file.Name()[:n])
+            } else {
+               scripts = append(scripts, file.Name())
+            }
+        }
+    }
+    return scripts
+}

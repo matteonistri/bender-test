@@ -15,11 +15,12 @@
 			<li>And many other wonderful features</li>
 		</ul>
 
-		<input id="script" type="text">
+		<select id="scripts"></select>
 		<input id="run" type='button' value='Run!'> <br>
 
-		<p style="float:left">Server Status:</p>
+		<div id="output"></div>
 
+		<p style="float:left">Server Status:</p>
 		<div id="serverstatus" style="float:left">
 			<p style="color:green">idle</p>
 		</div>
@@ -29,12 +30,29 @@
 <script type="text/javascript">
 $(document).ready(function() {
 	$('#run').click(function() {
-		var script = document.getElementById('script').value
+		var name = document.getElementById('scripts').value
 		$.ajax({
-			url: 'run/' + script,
-			type: 'get'
+			url: 'run/' + name,
+			type: 'get',
+			dataType: 'json',
+			success: function(uuid){
+				var id = uuid
+				setInterval(function(){ GetOutput(name, uuid) }, 100);
+			}
 		});
 	});
+
+	$.ajax({
+		url: 'service/list',
+		type: 'get',
+		dataType: 'json',
+		success: function(list){
+			$.each(list, function(i, val){
+				$("#scripts").append("<option value=" + val + ">" + val + "</option>")
+			});
+		}
+	});
+
 	setInterval("CheckStatus()", 100);
 });
 
@@ -48,6 +66,17 @@ function CheckStatus() {
 				$("#serverstatus").html("<p style='color:red'>" + status.State + "</p>")
 			else
 				$("#serverstatus").html("<p style='color:green'>" + status.State + "</p>")
+		}
+	});
+}
+
+function GetOutput(name, uuid){
+	$.ajax({
+		url: 'log/' + name + '?uuid=' + uuid,
+		type: 'get',
+		dataType: 'json',
+		success: function(out) {
+			$("#output").html(out)
 		}
 	});
 }
