@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 	"net/http"
 	"html/template"
@@ -47,17 +46,39 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	js, err := json.Marshal(uuid)
+
+	if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			LogErr(logContextDaemon, "json creation failed")
+			return
+	}
+
+	w.Write(js)
 
 	Submit(name, uuid, params, timeout)
 }
 
 // LogHandler handles /log requests
 func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
-	if r.PathParams["script"] != "" {
-		fmt.Fprintf(w, "Requested log for script '%s'\n", r.PathParams["script"])
-	} else if r.PathParams["uuid"] != "" {
-		fmt.Fprintf(w, "Requested log for uuid '%s'\n", r.PathParams["uuid"])
+	LogInf(logContextDaemon, "Receive LOG[%v] request from: %v", "Daemon", r.RemoteAddr)
+	r.ParseForm()
+	name := r.PathParams["script"]
+	id := r.Form["uuid"][0]
+	var buffer []byte
+
+	if id != ""{
+		buffer = Read(name, id, 0, 0)
 	}
+	js, err := json.Marshal(string(buffer))
+
+	if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			LogErr(logContextDaemon, "json creation failed")
+			return
+	}
+
+	w.Write(js)
 }
 
 // StatusHandler handles /state requests
@@ -105,6 +126,20 @@ func (c *Context) HomeHandler(w web.ResponseWriter, r *web.Request) {
 	t.Execute(w, job)
 }
 
+func (c *Context) ListHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive LIST[%v] request from: %v", "Daemon", r.RemoteAddr)
+	scripts := List()
+	js, err := json.Marshal(scripts)
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		LogErr(logContextDaemon, "json creation failed")
+		return
+	}
+
+	w.Write(js)
+}
+
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 
 	daemon_localStatus = sm
@@ -119,11 +154,11 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router := web.New(Context{})
 	router.Middleware((*Context).SetDefaults)
 	router.Get("/run/:script", (*Context).RunHandler)
-	router.Get("/log/script/:script", (*Context).LogHandler)
-	router.Get("/log/uuid/:uuid", (*Context).LogHandler)
+	router.Get("/log/:script", (*Context).LogHandler)
 	router.Get("/state", (*Context).StatusHandler)
 	router.Get("/state/:script", (*Context).StatusHandler)
 	router.Get("/", (*Context).HomeHandler)
+	router.Get("/service/list", (*Context).ListHandler)
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")
