@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,6 +31,13 @@ type ReportInterface interface {
 	UpdateString(s string)
 	Report() []byte
 }
+
+type ReportPubInterface interface {
+	List(name string) ([][]string, error)
+	Read(name, uuid string, size, offset int64) ([]byte, error)
+}
+
+type ReportPub struct{}
 
 // New fills a ReportContext struct attributes and creates the log file (as
 // well as the parent directory, if not existent)
@@ -134,6 +143,48 @@ func (ctx *ReportContext) Report() []byte {
 	return out
 }
 
+// List returns a list of available log files for the specified test name.
+// Available log files are specified with their uuid and timestamp.
+func (rp *ReportPub) List(name string) ([][]string, error) {
+	var out [][]string
+
+	// look for dir 'name' in logs dir
+	dir := filepath.Join(report_localContext.path, name)
+	_, err := os.Stat(dir)
+	if err != nil {
+		LogWar(logContextReport, "No logs available for script %s", name)
+		err := errors.New("No logs available for script " + name)
+		return nil, err
+	}
+
+	// get a list of files
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		LogWar(logContextReport, "Cannot stat %s", dir)
+		err := errors.New("Canno stat " + name)
+		return nil, err
+	}
+	LogDeb(logContextReport, "-- dir: %s --", dir)
+	for _, file := range files {
+		//		f := make([]string, 2)
+		LogDeb(logContextReport, "Found file: %s", file.Name())
+	}
+
+	// build list from file name timestamp-uuid
+
+	return out, nil
+}
+
+// Read reads <size> byte, starting from <offset> for the specified test name
+// and uuid
+func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error) {
+	var out []byte
+	// attempt to open file
+
+	// attempt to read from it
+	return out, nil
+}
+
 // ReportInit initializes the Report module
 func ReportInit(cm *ConfigModule) {
 	logContextReport = LoggerContext{
@@ -142,4 +193,8 @@ func ReportInit(cm *ConfigModule) {
 
 	report_localContext = ReportLocalContext{
 		path: cm.Get("report", "dir", "logs")}
+
+	//debug
+	x := &ReportPub{}
+	_, _ = x.List("sleep")
 }
