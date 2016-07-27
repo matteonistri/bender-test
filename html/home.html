@@ -17,6 +17,7 @@
 
 		<select id="scripts"></select>
 		<input id="run" type='button' value='Run!'> <br>
+		<input id="refresh" type='button' value='Refresh scripts'> <br>
 
 		<div id="output"></div>
 
@@ -42,17 +43,9 @@ $(document).ready(function() {
 		});
 	});
 
-	$.ajax({
-		url: 'service/list',
-		type: 'get',
-		dataType: 'json',
-		success: function(list){
-			$.each(list, function(i, val){
-				$("#scripts").append("<option value=" + val + ">" + val + "</option>")
-			});
-		}
-	});
+	$('#refresh').click(function(){ RefreshList() })
 
+	RefreshList()
 	setInterval("CheckStatus()", 100);
 });
 
@@ -77,6 +70,20 @@ function GetOutput(name, uuid){
 		dataType: 'json',
 		success: function(out) {
 			$("#output").html(out)
+		}
+	});
+}
+
+function RefreshList(){
+	$.ajax({
+		url: 'service/list',
+		type: 'get',
+		dataType: 'json',
+		success: function(list){
+			$("#scripts").html("")
+			$.each(list, function(i, val){
+				$("#scripts").append("<option value=" + val + ">" + val + "</option>")
+			});
 		}
 	});
 }
