@@ -76,7 +76,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 // Update appends bytes to the log file
 func (ctx *ReportContext) Update(b []byte) {
 	if ctx.appnd {
-		_, err := ctx.file.Seek(2, 0)
+		_, err := ctx.file.Seek(0, 2)
 		if err != nil {
 			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
 			panic(err)
@@ -94,7 +94,7 @@ func (ctx *ReportContext) Update(b []byte) {
 // UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
 	if ctx.appnd {
-		_, err := ctx.file.Seek(2, 0)
+		_, err := ctx.file.Seek(0, 2)
 		if err != nil {
 			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
 			panic(err)
