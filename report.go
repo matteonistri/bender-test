@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,7 +20,7 @@ type ReportContext struct {
 	uuid      string
 	timestamp time.Time
 	appnd     bool
-	file      string
+	file      *os.File
 }
 
 type ReportInterface interface {
@@ -31,11 +30,13 @@ type ReportInterface interface {
 	Report() []byte
 }
 
+// New fills a ReportContext struct attributes and creates the log file (as
+// well as the parent directory, if not existent)
 func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) {
 	ctx.name = name
 	ctx.uuid = uuid
 	ctx.timestamp = timestamp
-	ctx.appnd = true
+	ctx.appnd = appnd
 
 	// make dir if it doesn't exist
 	dir := filepath.Join(report_localContext.path, name)
@@ -55,67 +56,85 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	fpath := filepath.Join(dir, fname)
 
 	var f *os.File
+	var perms int
 	if appnd {
-		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_APPEND, 0666)
+		perms = os.O_CREATE | os.O_APPEND | os.O_RDWR
 	} else {
-		f, err = os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0666)
+		perms = os.O_CREATE | os.O_RDWR
 	}
+
+	f, err = os.OpenFile(fpath, perms, 0666)
 	if err != nil {
 		LogErr(logContextReport, "Cannot create file %s", fpath)
 		panic(err)
 	}
 
-	ctx.file = fpath
-	defer f.Close()
+	ctx.file = f
 	return
 }
 
+// Update appends bytes to the log file
 func (ctx *ReportContext) Update(b []byte) {
-	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		LogErr(logContextReport, "Cannot open file %s", ctx.file)
-		panic(err)
+	if ctx.appnd {
+		_, err := ctx.file.Seek(0, 2)
+		if err != nil {
+			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
+			panic(err)
+		}
 	}
-	defer f.Close()
 
-	w := bufio.NewWriter(f)
-	_, err = w.Write(b)
+	_, err := ctx.file.Write(b)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
-
-	w.Flush()
+	LogInf(logContextConfig, "%s", b)
 }
 
+// UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
-	f, err := os.OpenFile(ctx.file, os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		LogErr(logContextReport, "Cannot open file %s", ctx.file)
-		panic(err)
+	if ctx.appnd {
+		_, err := ctx.file.Seek(0, 2)
+		if err != nil {
+			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
+			panic(err)
+		}
 	}
-	defer f.Close()
 
-	w := bufio.NewWriter(f)
-	_, err = w.WriteString(s)
+	_, err := ctx.file.WriteString(s)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
 		panic(err)
 	}
-
-	w.Flush()
+	LogInf(logContextConfig, "%s", s)
 }
 
+// Report returns the content of the log file as bytes
 func (ctx *ReportContext) Report() []byte {
-	out, err := ioutil.ReadFile(ctx.file)
+	_, err := ctx.file.Seek(0, 0)
 	if err != nil {
-		LogErr(logContextReport, "IO error while reading file %s", ctx.file)
+		LogErr(logContextReport, "Cannot seek to start of file. %s", err)
 		panic(err)
+	}
+
+	var out []byte
+	buff := make([]byte, 1024)
+	for {
+		n, err := ctx.file.Read(buff)
+		if err != nil && err != io.EOF {
+			LogErr(logContextReport, "Cannot read file. %s", err)
+			panic(err)
+		}
+		if n == 0 {
+			break
+		}
+		out = append(out, buff[:n]...)
 	}
 
 	return out
 }
 
+// ReportInit initializes the Report module
 func ReportInit(cm *ConfigModule) {
 	logContextReport = LoggerContext{
 		level: cm.GetLogLevel("report", 3),
