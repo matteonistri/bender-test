@@ -193,11 +193,57 @@ func (rp *ReportPub) List(name string) ([][]string, error) {
 // Read reads <size> byte, starting from <offset> for the specified test name
 // and uuid
 func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error) {
-	var out []byte
-	// attempt to open file
+	// locate file
+	dir := filepath.Join(report_localContext.path, name)
+	_, err := os.Stat(dir)
+	if err != nil {
+		LogWar(logContextReport, "No logs available for script %s", name)
+		err := errors.New("No logs available for script " + name)
+		return nil, err
+	}
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		LogWar(logContextReport, "Cannot stat %s", dir)
+		err := errors.New("Cannot stat " + name)
+		return nil, err
+	}
+	for _, file := range files {
+		if strings.Contains(file.Name(), uuid) {
+			fpath := filepath.Join(dir, file.Name())
+			var out []byte
 
-	// attempt to read from it
-	return out, nil
+			if size <= 0 {
+				// read the whole file
+				out, err = ioutil.ReadFile(fpath)
+				if err != nil {
+					LogWar(logContextReport, "Cannot open log file %s", fpath)
+					return nil, err
+				}
+			} else {
+				// attempt to open file
+				f, err := os.Open(fpath)
+				if err != nil {
+					LogErr(logContextReport, "Cannot open file %s", fpath)
+					return nil, err
+				}
+				defer f.Close()
+
+				// seek and read
+				f.Seek(offset, 0)
+				out = make([]byte, size)
+				_, err = io.ReadFull(f, out)
+				if err != nil {
+					LogErr(logContextReport, "Error reading from file %s: %s", fpath, err)
+					return nil, err
+				}
+			}
+
+			return out, nil
+		}
+	}
+
+	err = errors.New("No log for test" + name + "with uuid" + uuid)
+	return nil, err
 }
 
 // ReportInit initializes the Report module
