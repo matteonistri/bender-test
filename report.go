@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -29,6 +32,13 @@ type ReportInterface interface {
 	UpdateString(s string)
 	Report() []byte
 }
+
+type ReportPubInterface interface {
+	List(name string) ([][]string, error)
+	Read(name, uuid string, size, offset int64) ([]byte, error)
+}
+
+type ReportPub struct{}
 
 // New fills a ReportContext struct attributes and creates the log file (as
 // well as the parent directory, if not existent)
@@ -132,6 +142,62 @@ func (ctx *ReportContext) Report() []byte {
 	}
 
 	return out
+}
+
+// List returns a list of available log files for the specified test name.
+// Available log files are specified with their uuid and timestamp.
+func (rp *ReportPub) List(name string) ([][]string, error) {
+	var out [][]string
+
+	// look for dir 'name' in logs dir
+	dir := filepath.Join(report_localContext.path, name)
+	_, err := os.Stat(dir)
+	if err != nil {
+		LogWar(logContextReport, "No logs available for script %s", name)
+		err := errors.New("No logs available for script " + name)
+		return nil, err
+	}
+
+	// get a list of files
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		LogWar(logContextReport, "Cannot stat %s", dir)
+		err := errors.New("Canno stat " + name)
+		return nil, err
+	}
+
+	// build list from file name timestamp-uuid
+	for _, file := range files {
+		//		f := make([]string, 2)
+		LogDeb(logContextReport, "Found file: %s", file.Name())
+		x := strings.Split(file.Name(), "-")
+		tr := x[:2]
+		id := x[3:]
+
+		timestamp := strings.Join(tr, "-")
+		uuid := strings.Join(id, "-")
+		uuid = string(strings.Split(uuid, ".")[0])
+
+		LogDeb(logContextReport, "  -timestamp: %s", timestamp)
+		LogDeb(logContextReport, "  -uuid: %s", uuid)
+
+		t := make([]string, 2)
+		t[0] = uuid
+		t[1] = timestamp
+		out = append(out, t)
+	}
+
+	return out, nil
+}
+
+// Read reads <size> byte, starting from <offset> for the specified test name
+// and uuid
+func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error) {
+	var out []byte
+	// attempt to open file
+
+	// attempt to read from it
+	return out, nil
 }
 
 // ReportInit initializes the Report module
