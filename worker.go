@@ -27,9 +27,8 @@ func init() {
 	go func() {
 		for {
 			params := <-__SubmitChannel
-			var job Job
-
-			ret := Run(&job, params.name, params.uuid, params.args)
+			job := &Job{}
+			ret := job.Run(params.name, params.uuid, params.args)
 
 			if ret == 0 {
 				start := time.Now()
@@ -50,8 +49,8 @@ func init() {
 					default:
 						time.Sleep(20 * time.Millisecond)
 					}
-					State(&job)
-					worker_localStatus.SetState(job)
+					job.UpdateState()
+					worker_localStatus.SetState(*job)
 				}
 
 				if time.Since(start) > timeout {
@@ -59,7 +58,7 @@ func init() {
 					job.Status = JOB_FAILED
 				}
 
-				worker_localStatus.SetState(job)
+				worker_localStatus.SetState(*job)
 			} else {
 				job.Status = JOB_NOT_FOUND
 			}

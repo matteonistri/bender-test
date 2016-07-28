@@ -30,6 +30,11 @@ type Job struct {
 	Timeout int
 }
 
+type JobInterface interface {
+	Run(name, uuid string, args []string) int
+	UpdateState()
+}
+
 var scriptsDir string
 var run bool
 
@@ -100,7 +105,7 @@ var endReadStart = make(chan bool)
 var logContextRunner LoggerContext
 
 //Initialize the script command
-func Run(job *Job, script, uuid string, args []string) int {
+func (job *Job) Run(script, uuid string, args []string) int {
 	job.Name = script
 	job.Uuid = uuid
 	job.Params = args
@@ -184,7 +189,7 @@ func Log() *chan string {
 }
 
 //Handle the status of script
-func State(job *Job) {
+func (job *Job) UpdateState() {
 	if cmd.ProcessState == nil {
 		job.Status = JOB_WORKING
 	} else if cmd.ProcessState.Success() {
