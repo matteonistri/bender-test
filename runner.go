@@ -189,7 +189,7 @@ func Log() *chan string {
 }
 
 //Handle the status of script
-func (job *Job) UpdateState() {
+func (job *Job) State() {
 	if cmd.ProcessState == nil {
 		job.Status = JOB_WORKING
 	} else if cmd.ProcessState.Success() {

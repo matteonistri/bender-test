@@ -49,7 +49,7 @@ func init() {
 					default:
 						time.Sleep(20 * time.Millisecond)
 					}
-					job.UpdateState()
+					job.State()
 					worker_localStatus.SetState(*job)
 				}
 
