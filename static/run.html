@@ -1,0 +1,94 @@
+<html>
+
+<head>
+	<script src="http://code.jquery.com/jquery-latest.js"></script>
+	<script>
+	$(function(){
+	  $("#header").load("header.html");
+	});
+	</script>
+</head>
+
+<body style="background-color:#D8D8D8">
+	<div id="header"></div>
+
+	<div class="container">
+	  <div class="row">
+	    <div class="col-md-5">
+	      <select class="form-control" id="scripts"></select>
+	    </div>
+	    <div class="col-md-4">
+	      <button type="button" class="btn btn-default btn-lg" style="width:100%" id="refresh">
+  			<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> Refresh Scripts
+		  </button>
+	    </div>
+	  </div>
+
+	  <div class="row">
+	  	<div class="col-md-5">
+	  		<div class="panel panel-default">
+			  <div class="panel-heading">
+			    <h3 class="panel-title">Output</h3>
+			  </div>
+			  <div class="panel-body" style="height:300px;background-color:#000000;color:lime;" id="output">
+			  </div>
+			</div>
+	  	</div>
+	  	<div class="col-md-4">
+	  	  <button type="button" class="btn btn-default btn-lg" style="margin-top:20;width:100%" id="run">
+  			<span class="glyphicon glyphicon-play" aria-hidden="true"></span> Run
+		  </button>
+	  	</div>
+	  </div>
+	</div>
+
+
+	<script>
+		$('document').ready(function(){
+			RefreshList();
+
+			$("#refresh").click(function(){
+				RefreshList()
+			});
+
+			$("#run").click(function(){
+				var name = $("#scripts option:selected").text()
+				$.ajax({
+					url: 'run/' + name,
+					type: 'get',
+					dataType: 'json',
+					success: function(uuid){
+						var id = uuid
+						intervalId = setInterval(function(){ GetOutput(name, uuid) }, 100);
+					}
+				});
+			});
+		});
+
+		function RefreshList(){
+			$.ajax({
+				url: 'service/list',
+				type: 'get',
+				dataType: 'json',
+				success: function(list){
+					$("#scripts").html("")
+					$.each(list, function(i, val){
+						$("#scripts").append("<option value=" + val + ">" + val + "</option>")
+					});
+				}
+			});
+		}
+
+		function GetOutput(name, uuid){
+			$.ajax({
+				url: 'log/' + name + '?uuid=' + uuid,
+				type: 'get',
+				dataType: 'json',
+				success: function(out) {
+					$("#output").html(out)
+				}
+			});
+		}
+	</script>
+</body>
+</html>
