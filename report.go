@@ -12,12 +12,14 @@ import (
 )
 
 var logContextReport LoggerContext
-var report_localContext ReportLocalContext
+var reportLocalContext ReportLocalContext
 
+// ReportLocalContext ...
 type ReportLocalContext struct {
 	path string
 }
 
+// ReportContext ...
 type ReportContext struct {
 	name      string
 	uuid      string
@@ -26,6 +28,7 @@ type ReportContext struct {
 	file      *os.File
 }
 
+// ReportInterface ...
 type ReportInterface interface {
 	New(name, uuid string, timestamp time.Time, appnd bool)
 	Update(b []byte)
@@ -33,11 +36,13 @@ type ReportInterface interface {
 	Report() []byte
 }
 
+// ReportPubInterface ...
 type ReportPubInterface interface {
 	List(name string) ([][]string, error)
 	Read(name, uuid string, size, offset int64) ([]byte, error)
 }
 
+// ReportPub ...
 type ReportPub struct{}
 
 // New fills a ReportContext struct attributes and creates the log file (as
@@ -49,7 +54,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	ctx.appnd = appnd
 
 	// make dir if it doesn't exist
-	dir := filepath.Join(report_localContext.path, name)
+	dir := filepath.Join(reportLocalContext.path, name)
 	_, err := os.Stat(dir)
 	if err != nil {
 		LogWar(logContextReport, "No dir %s found, making it", dir)
@@ -150,7 +155,7 @@ func (rp *ReportPub) List(name string) ([][]string, error) {
 	var out [][]string
 
 	// look for dir 'name' in logs dir
-	dir := filepath.Join(report_localContext.path, name)
+	dir := filepath.Join(reportLocalContext.path, name)
 	_, err := os.Stat(dir)
 	if err != nil {
 		LogWar(logContextReport, "No logs available for script %s", name)
@@ -194,7 +199,7 @@ func (rp *ReportPub) List(name string) ([][]string, error) {
 // and uuid
 func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error) {
 	// locate file
-	dir := filepath.Join(report_localContext.path, name)
+	dir := filepath.Join(reportLocalContext.path, name)
 	_, err := os.Stat(dir)
 	if err != nil {
 		LogWar(logContextReport, "No logs available for script %s", name)
@@ -221,10 +226,10 @@ func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error)
 				}
 			} else {
 				// attempt to open file
-				f, err := os.Open(fpath)
-				if err != nil {
+				f, ferr := os.Open(fpath)
+				if ferr != nil {
 					LogErr(logContextReport, "Cannot open file %s", fpath)
-					return nil, err
+					return nil, ferr
 				}
 				defer f.Close()
 
@@ -252,6 +257,6 @@ func ReportInit(cm *ConfigModule) {
 		level: cm.GetLogLevel("report", 3),
 		name:  "REPORT"}
 
-	report_localContext = ReportLocalContext{
+	reportLocalContext = ReportLocalContext{
 		path: cm.Get("report", "dir", "logs")}
 }

@@ -6,15 +6,15 @@ import (
 	"os"
 )
 
-type LogLevel int
-
+// Logs lever enum
 const (
-	LOG_ERROR   = 0
-	LOG_WARNING = 1
-	LOG_INFO    = 2
-	LOG_DEBUG   = 3
+	LogError   = 0
+	LogWarning = 1
+	LogInfo    = 2
+	LogDebug   = 3
 )
 
+// LoggerContext ...
 type LoggerContext struct {
 	level int
 	name  string
@@ -34,7 +34,7 @@ func LoggerModuleInit(logName string) {
 // LogErr calls log.Printf to print to the logger. Arguments following the
 // first are handled in the manner of fmt.Printf.
 func LogErr(c LoggerContext, s string, v ...interface{}) {
-	if c.level >= LOG_ERROR {
+	if c.level >= LogError {
 		log.Printf("["+c.name+"]"+" ERR: "+s, v...)
 	}
 }
@@ -42,7 +42,7 @@ func LogErr(c LoggerContext, s string, v ...interface{}) {
 // LogWar calls log.Printf to print to the logger. Arguments following the
 // first are handled in the manner of fmt.Printf.
 func LogWar(c LoggerContext, s string, v ...interface{}) {
-	if c.level >= LOG_WARNING {
+	if c.level >= LogWarning {
 		log.Printf("["+c.name+"]"+" WARN: "+s, v...)
 	}
 }
@@ -50,7 +50,7 @@ func LogWar(c LoggerContext, s string, v ...interface{}) {
 // LogInf calls log.Printf to print to the logger. Arguments following the
 // first are handled in the manner of fmt.Printf.
 func LogInf(c LoggerContext, s string, v ...interface{}) {
-	if c.level >= LOG_INFO {
+	if c.level >= LogInfo {
 		log.Printf("["+c.name+"]"+" INFO: "+s, v...)
 	}
 }
@@ -58,7 +58,7 @@ func LogInf(c LoggerContext, s string, v ...interface{}) {
 // LogDeb calls log.Printf to print to the logger. Arguments following the
 // first are handled in the manner of fmt.Printf.
 func LogDeb(c LoggerContext, s string, v ...interface{}) {
-	if c.level <= LOG_DEBUG {
+	if c.level <= LogDebug {
 		log.Printf("["+c.name+"]"+" DEBUG: "+s, v...)
 	}
 }

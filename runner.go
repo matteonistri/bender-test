@@ -11,54 +11,49 @@ import (
 	"time"
 )
 
-type JobStatus string
-
+// Job in execution states
 const (
-	JOB_QUEUED     = "queued"
-	JOB_NOT_FOUND  = "not found"
-	JOB_QUEUE_FULL = "queue full"
-	JOB_WORKING    = "working"
-	JOB_FAILED     = "failed"
-	JOB_COMPLETED  = "completed"
+	JobNotFound  = "not found"
+	JobWorking   = "working"
+	JobFailed    = "failed"
+	JobCompleted = "completed"
 )
 
+// Job structure to track ran script
 type Job struct {
 	Name    string
 	Params  []string
-	Uuid    string
+	UUID    string
 	Created time.Time
-	Status  JobStatus
+	Status  string
 	Timeout int
 }
 
+//JobInterface ..
 type JobInterface interface {
-	Run(name, uuid string, args []string) int
+	Run(name, UUID string, args []string) int
 	UpdateState()
 }
 
 var scriptsDir string
 var run bool
 
+//GetScriptsDir ...
 func GetScriptsDir() string {
 	return scriptsDir
 }
 
+//SetScriptsDir  ...
 func SetScriptsDir(dir string) {
 	scriptsDir = dir
 }
 
-func init() {
-	SetScriptsDir("scripts")
-	logContextRunner = LoggerContext{
-		name:  "RUNNER",
-		level: 3}
-}
-
+//FakeRun ..
 func FakeRun(job *Job, script, uuid string, args []string) int {
 	job.Name = script
-	job.Uuid = uuid
+	job.UUID = uuid
 	job.Params = args
-	job.Status = JOB_WORKING
+	job.Status = JobWorking
 
 	var exit int
 
@@ -77,26 +72,25 @@ func FakeRun(job *Job, script, uuid string, args []string) int {
 	return exit
 }
 
-//Check if a script exists
+//FakeHasScript Check if a script exists
 func FakeHasScript(script string) bool {
 	return true
 }
 
-//Return the current stdout and stderr
+//FakeLog Return the current stdout and stderr
 func FakeLog(job *Job) string {
 	buf := make([]byte, 100)
 	//reading from stdout pipe
 	return string(buf)
 }
 
-//Handle the status of script
+//FakeState Handle the status of script
 func FakeState(job *Job) {
 	if run {
-		job.Status = JOB_WORKING
+		job.Status = JobWorking
 	} else {
-		job.Status = JOB_COMPLETED
+		job.Status = JobCompleted
 	}
-
 }
 
 var cmd = exec.Command("")
@@ -105,19 +99,19 @@ var syncChan = make(chan bool)
 var endReadStart = make(chan bool)
 var logContextRunner LoggerContext
 
-//Initialize the script command
-func (job *Job) Run(script, uuid string, args []string) int {
+//Run put in working the script
+func (job *Job) Run(script, UUID string, args []string) int {
 	job.Name = script
-	job.Uuid = uuid
+	job.UUID = UUID
 	job.Params = args
-	job.Status = JOB_WORKING
+	job.Status = JobWorking
 
 	var exit int
 
 	if name, exist := HasScript(job.Name); exist {
-		script_path := filepath.Join(GetScriptsDir(), name)
+		scriptPath := filepath.Join(GetScriptsDir(), name)
 
-		cmd = exec.Command(script_path, job.Params...)
+		cmd = exec.Command(scriptPath, job.Params...)
 		go Start()
 		exit = 0
 	} else {
@@ -128,7 +122,7 @@ func (job *Job) Run(script, uuid string, args []string) int {
 	return exit
 }
 
-//Run the command
+//Start go rutine to exe the command
 func Start() {
 	<-syncChan
 	time.Sleep(100 * time.Millisecond)
@@ -143,7 +137,7 @@ func Start() {
 	}
 }
 
-//Check if a script exists
+//HasScript Check if a script exists
 func HasScript(script string) (string, bool) {
 	files, err := ioutil.ReadDir(GetScriptsDir())
 	var exist = false
@@ -162,7 +156,7 @@ func HasScript(script string) (string, bool) {
 	return name, exist
 }
 
-//Return the current stdout and stderr
+//Log Return the current stdout and stderr
 func Log() *chan string {
 	go func() {
 		syncChan <- true
@@ -189,34 +183,42 @@ func Log() *chan string {
 	return &outChan
 }
 
-//Handle the status of script
+//State Handle the status of script
 func (job *Job) State() {
 	if cmd.ProcessState == nil {
-		job.Status = JOB_WORKING
+		job.Status = JobWorking
 	} else if cmd.ProcessState.Success() {
-		job.Status = JOB_COMPLETED
+		job.Status = JobCompleted
 	} else {
-		job.Status = JOB_FAILED
+		job.Status = JobFailed
 	}
 }
 
-func List() []string{
-    files, err := ioutil.ReadDir(GetScriptsDir())
-    var scripts []string
+// List Get script list that we could run.§
+func List() []string {
+	files, err := ioutil.ReadDir(GetScriptsDir())
+	var scripts []string
 
-    if err != nil {
-        LogErr(logContextRunner, "No scripts directory found")
-    } else {
-        for _, file := range files {
-            n := strings.LastIndexByte(file.Name(), '.')
-            if n > 0 {
-                scripts = append(scripts, file.Name()[:n])
-            } else {
-               scripts = append(scripts, file.Name())
-            }
-        }
-    }
-    return scripts
+	if err != nil {
+		LogErr(logContextRunner, "No scripts directory found")
+	} else {
+		for _, file := range files {
+			n := strings.LastIndexByte(file.Name(), '.')
+			if n > 0 {
+				scripts = append(scripts, file.Name()[:n])
+			} else {
+				scripts = append(scripts, file.Name())
+			}
+		}
+	}
+	return scripts
+}
+
+func init() {
+	SetScriptsDir("scripts")
+	logContextRunner = LoggerContext{
+		name:  "RUNNER",
+		level: 3}
 }
 
 func GetSet(set string) []string{

@@ -4,21 +4,22 @@ package main
 
 import (
 	"encoding/json"
-	"time"
-	"net/http"
 	"html/template"
+	"net/http"
+	"time"
 
 	"github.com/gocraft/web"
 	"github.com/satori/go.uuid"
 )
 
 var logContextDaemon LoggerContext
-var daemon_localStatus *StatusModule
+var daemonLocalStatus *StatusModule
 
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
 }
 
+// Context ...
 type Context struct {
 	ScriptsDir string
 }
@@ -39,8 +40,8 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	timeout := 10000
 	params := r.Form
 
-	status, _ := daemon_localStatus.GetState()
-	if status == SERVER_WORKING {
+	status, _ := daemonLocalStatus.GetState()
+	if status == DaemonWorking {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -49,9 +50,9 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	js, err := json.Marshal(uuid)
 
 	if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			LogErr(logContextDaemon, "json creation failed")
-			return
+		w.WriteHeader(http.StatusServiceUnavailable)
+		LogErr(logContextDaemon, "json creation failed")
+		return
 	}
 
 	w.Write(js)
@@ -71,7 +72,7 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	var js []byte
 	var err error
 
-	if len(ids) > 0{
+	if len(ids) > 0 {
 		id := ids[0]
 		buffer, err = rep.Read(name, id, 0, 0)
 		if err != nil {
@@ -89,9 +90,9 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	}
 
 	if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			LogErr(logContextDaemon, "json creation failed")
-			return
+		w.WriteHeader(http.StatusServiceUnavailable)
+		LogErr(logContextDaemon, "json creation failed")
+		return
 	}
 
 	w.Write(js)
@@ -102,8 +103,9 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 
 	if r.RequestURI == "/state" {
-		//LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
-		js, err := json.Marshal(daemon_localStatus)
+		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
+		js, err := json.Marshal(daemonLocalStatus)
+
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			LogErr(logContextDaemon, "json creation failed")
@@ -118,7 +120,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", r.PathParams["script"], r.RemoteAddr)
 
 		response := statusJobs{
-			Jobs: daemon_localStatus.GetJobs(r.PathParams["script"])}
+			Jobs: daemonLocalStatus.GetJobs(r.PathParams["script"])}
 		js, err := json.Marshal(response)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -130,18 +132,20 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	}
 }
 
+// HomeHandler ...
 func (c *Context) HomeHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive HOME[%v] request from: %v", "Daemon", r.RemoteAddr)
 	job := Job{Name: "hellosleep",
-			   Uuid: "acfjsif-909D",
-			   Created: time.Now(),
-			   Timeout: 54}
+		UUID:    "acfjsif-909D",
+		Created: time.Now(),
+		Timeout: 54}
 
 	t := template.New("New template")
 	t, _ = template.ParseFiles("static/run.html")
 	t.Execute(w, job)
 }
 
+//ListHandler ...
 func (c *Context) ListHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive LIST[%v] request from: %v", "Daemon", r.RemoteAddr)
 	scripts := List()
@@ -156,6 +160,7 @@ func (c *Context) ListHandler(w web.ResponseWriter, r *web.Request) {
 	w.Write(js)
 }
 
+// SetListHandler ...
 func (c *Context) SetListHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive SETS[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
@@ -180,9 +185,9 @@ func (c *Context) SetListHandler(w web.ResponseWriter, r *web.Request) {
 	w.Write(js)
 }
 
+// DaemonInit ...
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
-
-	daemon_localStatus = sm
+	daemonLocalStatus = sm
 
 	// init logger
 	logContextDaemon = LoggerContext{
@@ -201,7 +206,6 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router.Get("/", (*Context).HomeHandler)
 	router.Get("/service/list", (*Context).ListHandler)
 	router.Get("/service/sets", (*Context).SetListHandler)
-
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")

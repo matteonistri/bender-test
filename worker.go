@@ -55,12 +55,12 @@ func init() {
 
 				if time.Since(start) > timeout {
 					LogWar(logContextWorker, "Execution timed out")
-					job.Status = JOB_FAILED
+					job.Status = JobFailed
 				}
 
 				worker_localStatus.SetState(*job)
 			} else {
-				job.Status = JOB_NOT_FOUND
+				job.Status = JobNotFound
 			}
 		}
 	}()

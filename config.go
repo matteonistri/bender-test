@@ -4,11 +4,13 @@ import "gopkg.in/ini.v1"
 
 var logContextConfig LoggerContext
 
+// ConfigInterface ...
 type ConfigInterface interface {
 	Get(section string, key string, defValue string) string
 	GetLogLevel(section string, defValue int) int
 }
 
+// ConfigModule ...
 type ConfigModule struct {
 	conf *ini.File
 }
@@ -33,6 +35,7 @@ func ConfigInit(cm *ConfigModule, filename string) {
 	return
 }
 
+// Get ...
 func (cm *ConfigModule) Get(section string, key string, defValue string) string {
 	value, err := cm.conf.Section(section).GetKey(key)
 	if err != nil {
@@ -43,6 +46,7 @@ func (cm *ConfigModule) Get(section string, key string, defValue string) string 
 	return value.String()
 }
 
+// GetLogLevel ...
 func (cm *ConfigModule) GetLogLevel(section string, defValue int) int {
 	value, err := cm.conf.Section(section).GetKey("loglevel")
 	if err != nil {

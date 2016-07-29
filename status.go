@@ -5,13 +5,15 @@ import (
 	"time"
 )
 
+// StatusModule ...
 type StatusModule struct {
-	State     serverStatus
+	State     string
 	Name      string
 	Timestamp time.Time
 	Jobs      map[string]Job
 }
 
+//StatusInterface ...
 type StatusInterface interface {
 	SetState(Job)
 	GetState() (bool, int)
@@ -20,28 +22,27 @@ type StatusInterface interface {
 	GetRunningJob() (Job, error)
 }
 
-type serverStatus string
-
+// Daemon states enum
 const (
-	SERVER_IDLE    = "idle"
-	SERVER_WORKING = "working"
+	DaemonIdle    = "idle"
+	DaemonWorking = "working"
 )
 
 // SetState stores the provided Job into a map and updates the server idle
 // status
 func (s *StatusModule) SetState(job Job) {
-	s.Jobs[job.Uuid] = job
-	if job.Status == JOB_WORKING {
-		s.State = SERVER_WORKING
+	s.Jobs[job.UUID] = job
+	if job.Status == JobWorking {
+		s.State = DaemonWorking
 		return
 	}
 
-	s.State = SERVER_IDLE
+	s.State = DaemonIdle
 	return
 }
 
 // GetState returns the current idle status and the number of stored jobs
-func (s *StatusModule) GetState() (serverStatus, int) {
+func (s *StatusModule) GetState() (string, int) {
 	return s.State, len(s.Jobs)
 }
 
@@ -69,7 +70,7 @@ func (s *StatusModule) GetJobs(name string) []Job {
 // there is no running job
 func (s *StatusModule) GetRunningJob() (Job, error) {
 	for _, v := range s.Jobs {
-		if v.Status == JOB_WORKING {
+		if v.Status == JobWorking {
 			return v, nil
 		}
 	}
@@ -77,9 +78,9 @@ func (s *StatusModule) GetRunningJob() (Job, error) {
 	return Job{}, errors.New("no running jobs (idle)")
 }
 
-// initStatus initializes the status module
+//StatusModuleInit initializes the status module
 func StatusModuleInit(sm *StatusModule, cm *ConfigModule) {
-	sm.State = SERVER_IDLE
+	sm.State = DaemonIdle
 	sm.Name = cm.Get("status", "servername", "bender")
 	sm.Jobs = make(map[string]Job)
 	sm.Timestamp = time.Now()
