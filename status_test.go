@@ -9,15 +9,15 @@ import (
 
 func TestRunningJob(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{
-		Status: JOB_WORKING}
+		Status: JobWorking}
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if actualB == SERVER_IDLE {
-		t.Error("Expected SERVER_WORKING, got", actualB)
+	if actualB == DaemonIdle {
+		t.Error("Expected DaemonWorking, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -26,15 +26,15 @@ func TestRunningJob(t *testing.T) {
 
 func TestFinishedJob(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{
-		Status: JOB_COMPLETED}
+		Status: JobCompleted}
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if actualB == SERVER_WORKING {
-		t.Error("Expected SERVER_IDLE, got", actualB)
+	if actualB == DaemonWorking {
+		t.Error("Expected DaemonIdle, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -43,14 +43,14 @@ func TestFinishedJob(t *testing.T) {
 
 func TestEmptyJob(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{}
 	sm.SetState(fakejob)
 
 	actualB, actualI := sm.GetState()
-	if actualB == SERVER_WORKING {
-		t.Error("Expected SERVER_IDLE, got", actualB)
+	if actualB == DaemonWorking {
+		t.Error("Expected DaemonIdle, got", actualB)
 	}
 	if actualI != 1 {
 		t.Error("Expected 1, got", actualI)
@@ -59,11 +59,11 @@ func TestEmptyJob(t *testing.T) {
 
 func TestGetRunningJobValid(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{
 		Name:   "foo",
-		Status: JOB_WORKING}
+		Status: JobWorking}
 	sm.SetState(fakejob)
 
 	actualJ, err := sm.GetRunningJob()
@@ -77,11 +77,11 @@ func TestGetRunningJobValid(t *testing.T) {
 
 func TestGetRunningJobIdle(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{
 		Name:   "foo",
-		Status: JOB_COMPLETED}
+		Status: JobCompleted}
 	sm.SetState(fakejob)
 
 	_, err := sm.GetRunningJob()
@@ -92,18 +92,18 @@ func TestGetRunningJobIdle(t *testing.T) {
 
 func TestGetJobsValid(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 
 	fakejobA := Job{
 		Name: "fakejob",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobB := Job{
 		Name: "fakejob",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobC := Job{
 		Name: "fakejob",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 
 	sm.SetState(fakejobA)
 	sm.SetState(fakejobB)
@@ -117,15 +117,15 @@ func TestGetJobsValid(t *testing.T) {
 
 func TestGetJobsEmpty(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 
 	fakejobA := Job{
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobB := Job{
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobC := Job{
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 
 	sm.SetState(fakejobA)
 	sm.SetState(fakejobB)
@@ -139,18 +139,18 @@ func TestGetJobsEmpty(t *testing.T) {
 
 func TestGetJobsInvalid(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 
 	fakejobA := Job{
 		Name: "foo",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobB := Job{
 		Name: "bar",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 	fakejobC := Job{
 		Name: "biz",
-		Uuid: uuid.NewV4().String()}
+		UUID: uuid.NewV4().String()}
 
 	sm.SetState(fakejobA)
 	sm.SetState(fakejobB)
@@ -164,11 +164,11 @@ func TestGetJobsInvalid(t *testing.T) {
 
 func TestGetJobValid(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 	fakejob := Job{
 		Name: "foo",
-		Uuid: "bar"}
+		UUID: "bar"}
 
 	sm.SetState(fakejob)
 	actualJ := sm.GetJob("bar")
@@ -179,7 +179,7 @@ func TestGetJobValid(t *testing.T) {
 
 func TestGetJobEmpty(t *testing.T) {
 	sm := StatusModule{
-		State: SERVER_IDLE,
+		State: DaemonIdle,
 		Jobs:  make(map[string]Job)}
 
 	fakejob := Job{}

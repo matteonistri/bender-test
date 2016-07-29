@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-var __SubmitChannel chan Params
+var submitChannel chan params
 var logContextWorker LoggerContext
-var worker_localStatus *StatusModule
+var workerLocalStatus *StatusModule
 var endReadLog = make(chan bool)
 
-type Params struct {
+type params struct {
 	name    string
 	uuid    string
 	args    []string
@@ -23,10 +23,10 @@ func init() {
 		name:  "WORKER",
 		level: 3}
 
-	__SubmitChannel = make(chan Params)
+	submitChannel = make(chan params)
 	go func() {
 		for {
-			params := <-__SubmitChannel
+			params := <-submitChannel
 			job := &Job{}
 			ret := job.Run(params.name, params.uuid, params.args)
 
@@ -50,7 +50,7 @@ func init() {
 						time.Sleep(20 * time.Millisecond)
 					}
 					job.State()
-					worker_localStatus.SetState(*job)
+					workerLocalStatus.SetState(*job)
 				}
 
 				if time.Since(start) > timeout {
@@ -58,7 +58,7 @@ func init() {
 					job.Status = JobFailed
 				}
 
-				worker_localStatus.SetState(*job)
+				workerLocalStatus.SetState(*job)
 			} else {
 				job.Status = JobNotFound
 			}
@@ -66,7 +66,7 @@ func init() {
 	}()
 }
 
-//Send a new job on the channel
+//Submit send a new job on the channel
 func Submit(name, uuid string, argsMap url.Values, timeout int) {
 	var args []string
 	for k, v := range argsMap {
@@ -76,15 +76,16 @@ func Submit(name, uuid string, argsMap url.Values, timeout int) {
 		}
 	}
 
-	params := Params{
+	params := params{
 		name:    name,
 		uuid:    uuid,
 		args:    args,
 		timeout: timeout}
 
-	__SubmitChannel <- params
+	submitChannel <- params
 }
 
+// WorkerInit ...
 func WorkerInit(sm *StatusModule) {
-	worker_localStatus = sm
+	workerLocalStatus = sm
 }

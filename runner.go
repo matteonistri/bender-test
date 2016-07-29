@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"io"
-	"os"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -221,7 +221,8 @@ func init() {
 		level: 3}
 }
 
-func GetSet(set string) []string{
+// GetSet ...
+func GetSet(set string) []string {
 	file, err := os.Open(filepath.Join("sets", set))
 	var list []string
 
@@ -231,14 +232,15 @@ func GetSet(set string) []string{
 	}
 
 	scanner := bufio.NewScanner(file)
-	for scanner.Scan(){
+	for scanner.Scan() {
 		list = append(list, scanner.Text())
 	}
 
 	return list
 }
 
-func SetsList() []string{
+// SetsList ...
+func SetsList() []string {
 	sets, err := ioutil.ReadDir("sets")
 	var list []string
 
