@@ -63,14 +63,30 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive LOG[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
+	rep := &ReportPub{}
 	name := r.PathParams["script"]
-	id := r.Form["uuid"][0]
+	ids := r.Form["uuid"]
 	var buffer []byte
+	var list [][]string
+	var js []byte
+	var err error
 
-	if id != ""{
-		buffer = Read(name, id, 0, 0)
+	if len(ids) > 0{
+		id := ids[0]
+		buffer, err = rep.Read(name, id, 0, 0)
+		if err != nil {
+			LogErr(logContextDaemon, "Unable to find log for this script")
+			return
+		}
+		js, err = json.Marshal(string(buffer))
+	} else {
+		list, err = rep.List(name)
+		if err != nil {
+			LogErr(logContextDaemon, "Unable to find log for this script")
+			return
+		}
+		js, err = json.Marshal(list)
 	}
-	js, err := json.Marshal(string(buffer))
 
 	if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -86,7 +102,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 
 	if r.RequestURI == "/state" {
-		//LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
+		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
 		js, err := json.Marshal(daemon_localStatus)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -122,7 +138,7 @@ func (c *Context) HomeHandler(w web.ResponseWriter, r *web.Request) {
 			   Timeout: 54}
 
 	t := template.New("New template")
-	t, _ = template.ParseFiles("html/home.html")
+	t, _ = template.ParseFiles("static/run.html")
 	t.Execute(w, job)
 }
 
@@ -153,12 +169,14 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	// init http handlers
 	router := web.New(Context{})
 	router.Middleware((*Context).SetDefaults)
+	router.Middleware(web.StaticMiddleware("static"))
 	router.Get("/run/:script", (*Context).RunHandler)
 	router.Get("/log/:script", (*Context).LogHandler)
 	router.Get("/state", (*Context).StatusHandler)
 	router.Get("/state/:script", (*Context).StatusHandler)
 	router.Get("/", (*Context).HomeHandler)
 	router.Get("/service/list", (*Context).ListHandler)
+
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")
