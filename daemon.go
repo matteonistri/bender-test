@@ -102,7 +102,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 
 	if r.RequestURI == "/state" {
-		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
+		//LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
 		js, err := json.Marshal(daemon_localStatus)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -156,6 +156,30 @@ func (c *Context) ListHandler(w web.ResponseWriter, r *web.Request) {
 	w.Write(js)
 }
 
+func (c *Context) SetListHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive SETS[%v] request from: %v", "Daemon", r.RemoteAddr)
+	r.ParseForm()
+	list := r.Form["set"]
+	var js []byte
+	var err error
+
+	if len(list) <= 0 {
+		sets := SetsList()
+		js, err = json.Marshal(sets)
+	} else {
+		set := GetSet(list[0])
+		js, err = json.Marshal(set)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		LogErr(logContextDaemon, "json creation failed")
+		return
+	}
+
+	w.Write(js)
+}
+
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 
 	daemon_localStatus = sm
@@ -176,6 +200,7 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router.Get("/state/:script", (*Context).StatusHandler)
 	router.Get("/", (*Context).HomeHandler)
 	router.Get("/service/list", (*Context).ListHandler)
+	router.Get("/service/sets", (*Context).SetListHandler)
 
 
 	// start http server

@@ -21,14 +21,16 @@
 
 		<div id="output"></div>
 
-		<p style="float:left">Server Status:</p>
-		<div id="serverstatus" style="float:left">
-			<p style="color:green">idle</p>
+		<div style="border-style:solid">
+			<p>Server Status:</p>
+			<p id="serverstatus" style="color:green">idle</p>
 		</div>
+
 	</body>
 </html>
 
 <script type="text/javascript">
+var intervalId
 $(document).ready(function() {
 	$('#run').click(function() {
 		var name = document.getElementById('scripts').value
@@ -38,12 +40,15 @@ $(document).ready(function() {
 			dataType: 'json',
 			success: function(uuid){
 				var id = uuid
-				setInterval(function(){ GetOutput(name, uuid) }, 100);
+				intervalId = setInterval(function(){ GetOutput(name, uuid) }, 100);
+				console.log("start interval"+ intervalId)
 			}
 		});
 	});
 
 	$('#refresh').click(function(){ RefreshList() })
+
+	$('#loglist').change(function(){ Search() });
 
 	RefreshList()
 	setInterval("CheckStatus()", 100);
@@ -56,9 +61,12 @@ function CheckStatus() {
 		dataType: 'json',
 		success: function(status) {
 			if (status.State == "working")
-				$("#serverstatus").html("<p style='color:red'>" + status.State + "</p>")
-			else
-				$("#serverstatus").html("<p style='color:green'>" + status.State + "</p>")
+				$("#serverstatus").html("<p style='color:red'>" + status.State + "</p>");
+			else {
+				$("#serverstatus").html("<p style='color:green'>" + status.State + "</p>");
+				clearInterval(intervalId);
+				console.log("stop interval" + intervalId);
+			}
 		}
 	});
 }
@@ -81,8 +89,10 @@ function RefreshList(){
 		dataType: 'json',
 		success: function(list){
 			$("#scripts").html("")
+			$("#loglist").html("")
 			$.each(list, function(i, val){
 				$("#scripts").append("<option value=" + val + ">" + val + "</option>")
+				$("#loglist").append("<option value=" + val + ">" + val + "</option>")
 			});
 		}
 	});

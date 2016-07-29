@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"io"
+	"os"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -216,4 +217,37 @@ func List() []string{
         }
     }
     return scripts
+}
+
+func GetSet(set string) []string{
+	file, err := os.Open(filepath.Join("sets", set))
+	var list []string
+
+	if err != nil {
+		LogErr(logContextRunner, "Set file not found")
+		return list
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan(){
+		list = append(list, scanner.Text())
+	}
+
+	return list
+}
+
+func SetsList() []string{
+	sets, err := ioutil.ReadDir("sets")
+	var list []string
+
+	if err != nil {
+		LogErr(logContextRunner, "No sets dir found")
+		return list
+	}
+
+	for _, set := range sets {
+		list = append(list, set.Name())
+	}
+
+	return list
 }
