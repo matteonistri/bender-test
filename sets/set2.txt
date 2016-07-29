@@ -1,0 +1,4 @@
+foo
+foo -v
+foo -bar ciao
+hellosleep
