@@ -1,3 +1,6 @@
 #!/usr/bin/env python
-import time
-time.sleep(10)
+import time, sys
+while True:
+    time.sleep(3)
+    sys.exit(0)
+

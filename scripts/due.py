@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import time
+import os
+import sys
 
-for i in range(100):
-    print i*"Due script"
-    time.sleep(0.5)
+sys.stdout.write("1234567890")
+sys.stdout.flush()
+time.sleep(0.5)
+sys.exit(1)
