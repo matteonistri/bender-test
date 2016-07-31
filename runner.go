@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -24,13 +23,16 @@ const (
 
 // Job structure to track ran script
 type Job struct {
-	Name    string
-	Params  []string
-	UUID    string
-	Created time.Time
-	Status  string
-	pid     int
-	Timeout int
+	Name        string
+	Params      []string
+	UUID        string
+	Created     time.Time
+	Status      string
+	ErrorString string
+	Pid         int
+	SystemTime  time.Duration
+	UserTime    time.Duration
+	Timeout     int
 }
 
 //JobInterface ...
@@ -71,13 +73,15 @@ func hasScript(script string) (string, bool) {
 //Start go rutine to exe the command
 func runScritpLoop() {
 	c := <-cmdSyncChannel
-	c.Start()
-	LogInf(logContextRunner, "Execution started...")
-
 	// Start to track state of script
 	cmdStateChannel <- c
 
-	err := c.Wait()
+	err := c.Start()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
+	}
+
+	err = c.Wait()
 	if err != nil {
 		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
 		cmdStateErrorChannel <- JobFailed
@@ -107,28 +111,36 @@ func logRunLoop() {
 	}
 }
 
-func stateRunLoop() {
+func stateRunLoop(job *Job) {
 	//Wait start sync from run func
 	c := <-cmdStateChannel
 
 	for {
 		select {
 		case s := <-cmdStateErrorChannel:
-			LogErr(logContextRunner, "Script Error occurred")
+			LogErr(logContextRunner, "Script [%v] Error occurred [%v]", job.Name, s)
+			job.Status = s
 			stateChan <- s
 			return
 		default:
 			if c.ProcessState == nil {
+				job.Status = JobWorking
 				stateChan <- JobWorking
 			} else {
-				fmt.Println("Process", c.ProcessState.Pid())
-				fmt.Println("Process", c.ProcessState.String())
-				fmt.Println("Process", c.ProcessState.Success())
-				fmt.Println("Process", c.ProcessState.Exited())
-				fmt.Println("Process", c.ProcessState.SystemTime())
-				fmt.Println("Process", c.ProcessState.UserTime())
-				stateChan <- JobCompleted
-				return
+				job.Pid = c.ProcessState.Pid()
+				if c.ProcessState.Exited() {
+					if c.ProcessState.Success() {
+						job.Status = JobCompleted
+						job.SystemTime = c.ProcessState.SystemTime()
+						job.UserTime = c.ProcessState.UserTime()
+						stateChan <- JobCompleted
+					} else {
+						job.Status = JobFailed
+						job.ErrorString = c.ProcessState.String()
+						stateChan <- JobFailed
+					}
+					return
+				}
 			}
 		}
 	}
@@ -155,7 +167,7 @@ func (job *Job) Run(script, UUID string, args []string) int {
 
 	go runScritpLoop()
 	go logRunLoop()
-	go stateRunLoop()
+	go stateRunLoop(job)
 
 	LogInf(logContextRunner, "Start exec of [%v]", script)
 	cmdStartChannel <- cmd
