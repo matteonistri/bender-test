@@ -26,7 +26,6 @@ type Context struct {
 
 // SetDefaults initializes Context variables
 func (c *Context) SetDefaults(w web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
-	c.ScriptsDir = GetScriptsDir()
 	next(w, r)
 }
 
