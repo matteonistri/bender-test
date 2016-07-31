@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -29,117 +30,24 @@ type Job struct {
 	Timeout int
 }
 
-//JobInterface ..
+//JobInterface ...
 type JobInterface interface {
 	Run(name, UUID string, args []string) int
-	UpdateState()
+	State() *chan string
+	Log() *chan string
 }
 
-var scriptsDir string
-var run bool
-
-//GetScriptsDir ...
-func GetScriptsDir() string {
-	return scriptsDir
-}
-
-//SetScriptsDir  ...
-func SetScriptsDir(dir string) {
-	scriptsDir = dir
-}
-
-//FakeRun ..
-func FakeRun(job *Job, script, uuid string, args []string) int {
-	job.Name = script
-	job.UUID = uuid
-	job.Params = args
-	job.Status = JobWorking
-
-	var exit int
-
-	if FakeHasScript(job.Name) {
-		run = true
-		go func() {
-			time.Sleep(3 * time.Second)
-			//execution...
-			run = false
-		}()
-		exit = 0
-	} else {
-		exit = -1
-	}
-
-	return exit
-}
-
-//FakeHasScript Check if a script exists
-func FakeHasScript(script string) bool {
-	return true
-}
-
-//FakeLog Return the current stdout and stderr
-func FakeLog(job *Job) string {
-	buf := make([]byte, 100)
-	//reading from stdout pipe
-	return string(buf)
-}
-
-//FakeState Handle the status of script
-func FakeState(job *Job) {
-	if run {
-		job.Status = JobWorking
-	} else {
-		job.Status = JobCompleted
-	}
-}
-
-var cmd = exec.Command("")
 var outChan = make(chan string, 1)
-var syncChan = make(chan bool)
-var endReadStart = make(chan bool)
+var stateChan = make(chan string, 1)
+var cmdStartChannel = make(chan *exec.Cmd)
+var cmdStateChannel = make(chan *exec.Cmd)
+var cmdSyncChannel = make(chan *exec.Cmd)
 var logContextRunner LoggerContext
+var localScriptPath string
 
-//Run put in working the script
-func (job *Job) Run(script, UUID string, args []string) int {
-	job.Name = script
-	job.UUID = UUID
-	job.Params = args
-	job.Status = JobWorking
-
-	var exit int
-
-	if name, exist := HasScript(job.Name); exist {
-		scriptPath := filepath.Join(GetScriptsDir(), name)
-
-		cmd = exec.Command(scriptPath, job.Params...)
-		go Start()
-		exit = 0
-	} else {
-		LogErr(logContextRunner, "Script does not exist")
-		exit = -1
-	}
-
-	return exit
-}
-
-//Start go rutine to exe the command
-func Start() {
-	<-syncChan
-	time.Sleep(100 * time.Millisecond)
-	cmd.Start()
-	LogInf(logContextRunner, "Execution started...")
-	<-endReadStart
-	err := cmd.Wait()
-	LogInf(logContextRunner, "Execution finished")
-
-	if err != nil {
-		LogErr(logContextRunner, "Error occurred during execution")
-	}
-}
-
-//HasScript Check if a script exists
-func HasScript(script string) (string, bool) {
-	files, err := ioutil.ReadDir(GetScriptsDir())
+//hasScript Check if a script exists
+func hasScript(script string) (string, bool) {
+	files, err := ioutil.ReadDir(localScriptPath)
 	var exist = false
 	var name = ""
 
@@ -156,47 +64,104 @@ func HasScript(script string) (string, bool) {
 	return name, exist
 }
 
+//Start go rutine to exe the command
+func runScritpLoop() {
+	c := <-cmdSyncChannel
+	c.Start()
+	LogInf(logContextRunner, "Execution started...")
+	err := c.Wait()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
+		stateChan <- JobFailed
+	}
+}
+
+func logRunLoop() {
+	//Wait start sync from run func
+	c := <-cmdStartChannel
+	// Start script exec
+	cmdStateChannel <- c
+
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred while reading stdout")
+	}
+	stderr, err := c.StderrPipe()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred while reading stderr")
+	}
+
+	multi := io.MultiReader(stdout, stderr)
+	scanner := bufio.NewScanner(multi)
+	for scanner.Scan() {
+		out := scanner.Text()
+		outChan <- out
+	}
+}
+
+func stateRunLoop() {
+	//Wait start sync from run func
+	c := <-cmdStateChannel
+	// Start script exec
+	cmdSyncChannel <- c
+
+	for {
+		if c.ProcessState == nil {
+			stateChan <- JobWorking
+		} else {
+			fmt.Println(c.ProcessState.Pid())
+			fmt.Println(c.ProcessState.String())
+			fmt.Println(c.ProcessState.Success())
+			fmt.Println(c.ProcessState.Exited())
+			fmt.Println(c.ProcessState.SystemTime())
+			fmt.Println(c.ProcessState.UserTime())
+			stateChan <- JobCompleted
+			break
+		}
+	}
+}
+
+//Run put in working the script
+func (job *Job) Run(script, UUID string, args []string) int {
+	job.Name = script
+	job.UUID = UUID
+	job.Params = args
+	job.Status = JobWorking
+
+	LogInf(logContextRunner, "Run [%v]", script)
+
+	name, exist := hasScript(job.Name)
+	if !exist {
+		LogErr(logContextRunner, "Script [%v] does not exist", script)
+		return -1
+	}
+
+	LogInf(logContextRunner, "Prepare exec of [%v]", script)
+	scriptPath := filepath.Join(localScriptPath, name)
+	cmd := exec.Command(scriptPath, job.Params...)
+
+	go runScritpLoop()
+	go logRunLoop()
+	go stateRunLoop()
+
+	LogInf(logContextRunner, "Start exec of [%v]", script)
+	cmdStartChannel <- cmd
+	return 0
+}
+
 //Log Return the current stdout and stderr
-func Log() *chan string {
-	go func() {
-		syncChan <- true
-		stdout, err := cmd.StdoutPipe()
-		stderr, err := cmd.StderrPipe()
-		multi := io.MultiReader(stdout, stderr)
-		scanner := bufio.NewScanner(multi)
-
-		if err != nil {
-			LogErr(logContextRunner, "Error occurred while reading stdout/stderr")
-		}
-
-		for scanner.Scan() {
-			out := scanner.Text()
-			outChan <- out
-		}
-
-		endReadStart <- true
-		LogDeb(logContextRunner, "finished reading, sent sync to chan")
-		endReadLog <- true
-		LogDeb(logContextRunner, "finished reading, sent sync to chan tmp")
-	}()
-
+func (job *Job) Log() *chan string {
 	return &outChan
 }
 
 //State Handle the status of script
-func (job *Job) State() {
-	if cmd.ProcessState == nil {
-		job.Status = JobWorking
-	} else if cmd.ProcessState.Success() {
-		job.Status = JobCompleted
-	} else {
-		job.Status = JobFailed
-	}
+func (job *Job) State() *chan string {
+	return &stateChan
 }
 
 // List Get script list that we could run.§
 func List() []string {
-	files, err := ioutil.ReadDir(GetScriptsDir())
+	files, err := ioutil.ReadDir(localScriptPath)
 	var scripts []string
 
 	if err != nil {
@@ -212,13 +177,6 @@ func List() []string {
 		}
 	}
 	return scripts
-}
-
-func init() {
-	SetScriptsDir("scripts")
-	logContextRunner = LoggerContext{
-		name:  "RUNNER",
-		level: 3}
 }
 
 // GetSet ...
@@ -254,4 +212,15 @@ func SetsList() []string {
 	}
 
 	return list
+}
+
+// RunnerInit ...
+func RunnerInit(cm *ConfigModule) {
+	localScriptPath = cm.Get("runner", "script_path", "scripts")
+	logContextRunner = LoggerContext{
+		name:  "RUNNER",
+		level: cm.GetLogLevel("runner", 3)}
+
+	LogInf(logContextRunner, "Start")
+	LogInf(logContextRunner, "Script path[%v]", localScriptPath)
 }
