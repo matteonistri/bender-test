@@ -6,21 +6,22 @@ func main() {
 	var sm StatusModule
 	var cm ConfigModule
 
-	// init modules
-	LoggerModuleInit("bender-test")
 	ConfigInit(&cm, "bender-test")
 
+	LoggerModuleInit("bender-test")
 	logContextMain := LoggerContext{
 		name:  "MAIN",
 		level: cm.GetLogLevel("general", 3)}
 
+	LogInf(logContextMain, "== Bender test ==")
+	LogInf(logContextMain, "Run on: %v", goInfo.GetInfo())
+
+	// init modules
 	StatusModuleInit(&sm, &cm)
+	RunnerInit(&cm)
 	WorkerInit(&sm)
 	ReportInit(&cm)
 
 	// Start daemon
-	gi := goInfo.GetInfo()
-	LogInf(logContextMain, "== Bender test ==")
-	LogInf(logContextMain, "Run on: %v", gi)
 	DaemonInit(&sm, &cm)
 }
