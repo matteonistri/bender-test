@@ -14,9 +14,11 @@ import (
 
 // Job in execution states
 const (
-	JobNotFound  = "not found"
 	JobWorking   = "working"
+	JobSubmitted = "submitted"
+	JobNotFound  = "not found"
 	JobFailed    = "failed"
+	JobTimeout   = "timeout"
 	JobCompleted = "completed"
 )
 
@@ -27,6 +29,7 @@ type Job struct {
 	UUID    string
 	Created time.Time
 	Status  string
+	pid     int
 	Timeout int
 }
 
@@ -42,6 +45,7 @@ var stateChan = make(chan string, 1)
 var cmdStartChannel = make(chan *exec.Cmd)
 var cmdStateChannel = make(chan *exec.Cmd)
 var cmdSyncChannel = make(chan *exec.Cmd)
+var cmdStateErrorChannel = make(chan string, 1)
 var logContextRunner LoggerContext
 var localScriptPath string
 
@@ -69,10 +73,14 @@ func runScritpLoop() {
 	c := <-cmdSyncChannel
 	c.Start()
 	LogInf(logContextRunner, "Execution started...")
+
+	// Start to track state of script
+	cmdStateChannel <- c
+
 	err := c.Wait()
 	if err != nil {
 		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
-		stateChan <- JobFailed
+		cmdStateErrorChannel <- JobFailed
 	}
 }
 
@@ -80,7 +88,7 @@ func logRunLoop() {
 	//Wait start sync from run func
 	c := <-cmdStartChannel
 	// Start script exec
-	cmdStateChannel <- c
+	cmdSyncChannel <- c
 
 	stdout, err := c.StdoutPipe()
 	if err != nil {
@@ -102,21 +110,26 @@ func logRunLoop() {
 func stateRunLoop() {
 	//Wait start sync from run func
 	c := <-cmdStateChannel
-	// Start script exec
-	cmdSyncChannel <- c
 
 	for {
-		if c.ProcessState == nil {
-			stateChan <- JobWorking
-		} else {
-			fmt.Println(c.ProcessState.Pid())
-			fmt.Println(c.ProcessState.String())
-			fmt.Println(c.ProcessState.Success())
-			fmt.Println(c.ProcessState.Exited())
-			fmt.Println(c.ProcessState.SystemTime())
-			fmt.Println(c.ProcessState.UserTime())
-			stateChan <- JobCompleted
-			break
+		select {
+		case s := <-cmdStateErrorChannel:
+			LogErr(logContextRunner, "Script Error occurred")
+			stateChan <- s
+			return
+		default:
+			if c.ProcessState == nil {
+				stateChan <- JobWorking
+			} else {
+				fmt.Println("Process", c.ProcessState.Pid())
+				fmt.Println("Process", c.ProcessState.String())
+				fmt.Println("Process", c.ProcessState.Success())
+				fmt.Println("Process", c.ProcessState.Exited())
+				fmt.Println("Process", c.ProcessState.SystemTime())
+				fmt.Println("Process", c.ProcessState.UserTime())
+				stateChan <- JobCompleted
+				return
+			}
 		}
 	}
 }
@@ -126,9 +139,9 @@ func (job *Job) Run(script, UUID string, args []string) int {
 	job.Name = script
 	job.UUID = UUID
 	job.Params = args
-	job.Status = JobWorking
+	job.Status = JobSubmitted
 
-	LogInf(logContextRunner, "Run [%v]", script)
+	LogInf(logContextRunner, "Run [%v], State[%v]", script, job.Status)
 
 	name, exist := hasScript(job.Name)
 	if !exist {
