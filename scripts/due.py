@@ -2,8 +2,7 @@
 import time
 import os
 import sys
-
-sys.stdout.write("1234567890")
-sys.stdout.flush()
-time.sleep(0.5)
+for i in range(100):
+    sys.stdout.write("1234567890")
+    sys.stdout.flush()
 sys.exit(1)
