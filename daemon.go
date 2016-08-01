@@ -56,7 +56,7 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 
 	w.Write(js)
 
-	Submit(name, uuid, params, timeout)
+	Submit(name, uuid, params, time.Duration(timeout))
 }
 
 // LogHandler handles /log requests

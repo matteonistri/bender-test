@@ -8,66 +8,58 @@ import (
 var submitChannel chan params
 var logContextWorker LoggerContext
 var workerLocalStatus *StatusModule
-var endReadLog = make(chan bool)
 
 type params struct {
 	name    string
 	uuid    string
 	args    []string
-	timeout int
+	timeout time.Duration
 }
 
 //Receive a job from channel and call the runner to execute it
-func init() {
-	logContextWorker = LoggerContext{
-		name:  "WORKER",
-		level: 3}
+func workerLoop() {
+	for {
+		params := <-submitChannel
 
-	submitChannel = make(chan params)
-	go func() {
-		for {
-			params := <-submitChannel
-			job := &Job{}
-			ret := job.Run(params.name, params.uuid, params.args)
+		job := &Job{}
+		ret := job.Run(params.name, params.uuid, params.args)
+		if ret < 0 {
+			job.Status = JobNotFound
+		} else {
+			logChannel := job.Log()
+			stateChannel := job.State()
+			previousState := ""
 
-			if ret == 0 {
-				start := time.Now()
-				timeout := time.Duration(params.timeout) * time.Millisecond
-
-				rep := &ReportContext{}
-				rep.New(params.name, params.uuid, start, true)
-				logChan := *Log()
-
-			timeToLive:
-				for time.Since(start) < timeout {
-					select {
-					case m := <-logChan:
-						rep.UpdateString(m)
-					case <-endReadLog:
-						LogDeb(logContextWorker, "received end of read sync")
-						break timeToLive
-					default:
-						time.Sleep(20 * time.Millisecond)
+			//rep := &ReportContext{}
+			//rep.New(params.name, params.uuid, start, true)
+			exit := false
+			for !exit {
+				select {
+				case m := <-logChannel:
+					LogDeb(logContextWorker, m)
+				case s := <-stateChannel:
+					if previousState != s {
+						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
+						previousState = s
 					}
-					job.State()
-					workerLocalStatus.SetState(*job)
+					if s != JobWorking {
+						LogInf(logContextWorker, "%v", job)
+						exit = true
+					}
+				case <-time.After(params.timeout * time.Second):
+					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
+					LogInf(logContextWorker, "%v", job)
+					job.Name = JobTimeout
+					exit = true
 				}
-
-				if time.Since(start) > timeout {
-					LogWar(logContextWorker, "Execution timed out")
-					job.Status = JobFailed
-				}
-
-				workerLocalStatus.SetState(*job)
-			} else {
-				job.Status = JobNotFound
 			}
 		}
-	}()
+		workerLocalStatus.SetState(*job)
+	}
 }
 
 //Submit send a new job on the channel
-func Submit(name, uuid string, argsMap url.Values, timeout int) {
+func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 	var args []string
 	for k, v := range argsMap {
 		for _, x := range v {
@@ -80,7 +72,8 @@ func Submit(name, uuid string, argsMap url.Values, timeout int) {
 		name:    name,
 		uuid:    uuid,
 		args:    args,
-		timeout: timeout}
+		timeout: timeout,
+	}
 
 	submitChannel <- params
 }
@@ -88,4 +81,11 @@ func Submit(name, uuid string, argsMap url.Values, timeout int) {
 // WorkerInit ...
 func WorkerInit(sm *StatusModule) {
 	workerLocalStatus = sm
+	logContextWorker = LoggerContext{
+		name:  "WORKER",
+		level: 3}
+
+	submitChannel = make(chan params)
+
+	go workerLoop()
 }
