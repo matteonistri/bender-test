@@ -33,6 +33,8 @@ type Job struct {
 	SystemTime  time.Duration
 	UserTime    time.Duration
 	Timeout     int
+	outChan     chan string
+	stateChan   chan string
 }
 
 //JobInterface ...
@@ -42,12 +44,6 @@ type JobInterface interface {
 	Log() *chan string
 }
 
-var outChan = make(chan string, 1)
-var stateChan = make(chan string, 1)
-var cmdStartChannel = make(chan *exec.Cmd)
-var cmdStateChannel = make(chan *exec.Cmd)
-var cmdSyncChannel = make(chan *exec.Cmd)
-var cmdStateErrorChannel = make(chan string, 1)
 var logContextRunner LoggerContext
 var localScriptPath string
 
@@ -70,77 +66,45 @@ func hasScript(script string) (string, bool) {
 	return name, exist
 }
 
-//Start go rutine to exe the command
-func runScritpLoop() {
-	c := <-cmdSyncChannel
-	// Start to track state of script
-	cmdStateChannel <- c
-
-	err := c.Start()
-	if err != nil {
-		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
-	}
-
-	err = c.Wait()
-	if err != nil {
-		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
-		cmdStateErrorChannel <- JobFailed
-	}
-}
-
-func logRunLoop() {
-	//Wait start sync from run func
-	c := <-cmdStartChannel
-	// Start script exec
-	cmdSyncChannel <- c
-
-	stdout, err := c.StdoutPipe()
-	if err != nil {
+func runLoop(job *Job, scriptPath string) {
+	cmd := exec.Command(scriptPath, job.Params...)
+	stdout, e := cmd.StdoutPipe()
+	if e != nil {
 		LogErr(logContextRunner, "Error occurred while reading stdout")
+		job.stateChan <- JobFailed
 	}
-	stderr, err := c.StderrPipe()
-	if err != nil {
+	stderr, e := cmd.StderrPipe()
+	if e != nil {
 		LogErr(logContextRunner, "Error occurred while reading stderr")
+		job.stateChan <- JobFailed
 	}
 
 	multi := io.MultiReader(stdout, stderr)
 	scanner := bufio.NewScanner(multi)
+
+	err := cmd.Start()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
+		job.stateChan <- JobFailed
+	}
+
 	for scanner.Scan() {
 		out := scanner.Text()
-		outChan <- out
+		job.outChan <- out
 	}
-}
+	err = cmd.Wait()
+	if err != nil {
+		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
+		job.stateChan <- JobFailed
+	}
 
-func stateRunLoop(job *Job) {
-	//Wait start sync from run func
-	c := <-cmdStateChannel
-
-	for {
-		select {
-		case s := <-cmdStateErrorChannel:
-			LogErr(logContextRunner, "Script [%v] Error occurred [%v]", job.Name, s)
-			job.Status = s
-			stateChan <- s
-			return
-		default:
-			if c.ProcessState == nil {
-				job.Status = JobWorking
-				stateChan <- JobWorking
+	if cmd.ProcessState != nil {
+		LogInf(logContextRunner, "Script PID[%v]", cmd.ProcessState.Pid())
+		if cmd.ProcessState.Exited() {
+			if cmd.ProcessState.Success() {
+				job.stateChan <- JobCompleted
 			} else {
-				job.Pid = c.ProcessState.Pid()
-				if c.ProcessState.Exited() {
-					if c.ProcessState.Success() {
-						job.Status = JobCompleted
-						job.SystemTime = c.ProcessState.SystemTime()
-						job.UserTime = c.ProcessState.UserTime()
-						stateChan <- JobCompleted
-					} else {
-						job.Status = JobFailed
-						job.ErrorString = c.ProcessState.String()
-						stateChan <- JobFailed
-					}
-					return
-				}
+				job.stateChan <- JobFailed
 			}
 		}
 	}
@@ -152,6 +116,8 @@ func (job *Job) Run(script, UUID string, args []string) int {
 	job.UUID = UUID
 	job.Params = args
 	job.Status = JobSubmitted
+	job.outChan = make(chan string, 1)
+	job.stateChan = make(chan string, 1)
 
 	LogInf(logContextRunner, "Run [%v], State[%v]", script, job.Status)
 
@@ -161,27 +127,19 @@ func (job *Job) Run(script, UUID string, args []string) int {
 		return -1
 	}
 
-	LogInf(logContextRunner, "Prepare exec of [%v]", script)
 	scriptPath := filepath.Join(localScriptPath, name)
-	cmd := exec.Command(scriptPath, job.Params...)
-
-	go runScritpLoop()
-	go logRunLoop()
-	go stateRunLoop(job)
-
-	LogInf(logContextRunner, "Start exec of [%v]", script)
-	cmdStartChannel <- cmd
+	go runLoop(job, scriptPath)
 	return 0
 }
 
 //Log Return the current stdout and stderr
-func (job *Job) Log() *chan string {
-	return &outChan
+func (job *Job) Log() chan string {
+	return job.outChan
 }
 
 //State Handle the status of script
-func (job *Job) State() *chan string {
-	return &stateChan
+func (job *Job) State() chan string {
+	return job.stateChan
 }
 
 // List Get script list that we could run.§

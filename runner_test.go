@@ -11,12 +11,11 @@ func runner(name string, timeout time.Duration) (string, int) {
 	if ret < 0 {
 		return JobNotFound, 0
 	}
-	logChannel := *job.Log()
-	stateChannel := *job.State()
+	logChannel := job.Log()
+	stateChannel := job.State()
 
 	count := 0
 	previousState := ""
-	start := time.Now()
 	for {
 		select {
 		case m := <-logChannel:
@@ -30,12 +29,10 @@ func runner(name string, timeout time.Duration) (string, int) {
 				LogInf(logContextTestRunner, "%v", job)
 				return s, count
 			}
-			if time.Since(start) >= timeout*time.Second {
-				LogDeb(logContextTestRunner, "Exec script [%v] Timeout! [%v]", name, timeout*time.Second)
-				LogInf(logContextTestRunner, "%v", job)
-				return JobTimeout, count
-			}
-
+		case <-time.After(timeout * time.Second):
+			LogDeb(logContextTestRunner, "Exec script [%v] Timeout! [%v]", name, timeout*time.Second)
+			LogInf(logContextTestRunner, "%v", job)
+			return JobTimeout, count
 		}
 	}
 }
@@ -56,18 +53,18 @@ func TestRunnerF(t *testing.T) {
 		t.Errorf("Unknow should not found,0 [%v,%v].", ret, count)
 	}
 	LogInf(logContextTestRunner, "Foo Test..")
-	ret, count = runner("foo", 60)
+	ret, count = runner("foo", 5)
 	if !(ret == JobFailed && count == 0) {
 		t.Errorf("Foo script should fail,0 [%v,%v].", ret, count)
 	}
 	LogInf(logContextTestRunner, "Uno Test..")
-	ret, count = runner("uno", 60)
+	ret, count = runner("uno", 5)
 	if !(ret == JobCompleted && count == 10) {
 		t.Errorf("Uno script should be completed,10 [%v,%v].", ret, count)
 	}
 	LogInf(logContextTestRunner, "Due Test..")
-	ret, count = runner("due", 60)
-	if !(ret == JobFailed && count == 10) {
+	ret, count = runner("due", 10)
+	if !(ret == JobFailed && count == 1000) {
 		t.Errorf("Due script should fail,10 [%v,%v].", ret, count)
 	}
 	LogInf(logContextTestRunner, "Tre Test..")
