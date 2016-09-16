@@ -36,7 +36,7 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 
 	name := r.PathParams["script"]
 	uuid := uuid.NewV4().String()
-	timeout := 10000
+	timeout := 10
 	params := r.Form
 
 	status, _ := daemonLocalStatus.GetState()
