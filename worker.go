@@ -34,6 +34,8 @@ func workerLoop() {
 			//rep.New(params.name, params.uuid, start, true)
 			exit := false
 			for !exit {
+				sts, num := workerLocalStatus.GetState()
+				LogDeb(logContextWorker, "State: %v %v", sts, num)
 				select {
 				case m := <-logChannel:
 					LogDeb(logContextWorker, m)
