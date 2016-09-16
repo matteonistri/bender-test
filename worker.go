@@ -40,12 +40,14 @@ func workerLoop() {
 				case s := <-stateChannel:
 					if previousState != s {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
+						job.Status = s
 						previousState = s
 					}
 					if s != JobWorking {
 						LogInf(logContextWorker, "%v", job)
 						exit = true
 					}
+					workerLocalStatus.SetState(*job)
 				case <-time.After(params.timeout * time.Second):
 					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
 					LogInf(logContextWorker, "%v", job)
@@ -54,7 +56,6 @@ func workerLoop() {
 				}
 			}
 		}
-		workerLocalStatus.SetState(*job)
 	}
 }
 

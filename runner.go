@@ -86,6 +86,9 @@ func runLoop(job *Job, scriptPath string) {
 	if err != nil {
 		LogErr(logContextRunner, "Error occurred during execution [%v]", err)
 		job.stateChan <- JobFailed
+	} else
+	{
+		job.stateChan <- JobWorking
 	}
 
 	for scanner.Scan() {
