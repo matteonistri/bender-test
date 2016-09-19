@@ -201,6 +201,52 @@ func Report(name, uuid string) ([]byte, error){
 	return out, nil
 }
 
+// List returns a list of available log files for the specified test name.
+// Available log files are specified with their uuid and timestamp.
+func ReportList(name string) ([][]string, error) {
+	var out [][]string
+
+	// look for dir 'name' in logs dir
+	dir := filepath.Join(reportLocalContext.path, name)
+	_, err := os.Stat(dir)
+	if err != nil {
+		LogWar(logContextReport, "No logs available for script %s", name)
+		err := errors.New("No logs available for script " + name)
+		return nil, err
+	}
+
+	// get a list of files
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		LogWar(logContextReport, "Cannot stat %s", dir)
+		err := errors.New("Canno stat " + name)
+		return nil, err
+	}
+
+	// build list from file name timestamp-uuid
+	for _, file := range files {
+		//		f := make([]string, 2)
+		LogDeb(logContextReport, "Found file: %s", file.Name())
+		x := strings.Split(file.Name(), "-")
+		tr := x[:2]
+		id := x[3:]
+
+		timestamp := strings.Join(tr, "-")
+		uuid := strings.Join(id, "-")
+		uuid = string(strings.Split(uuid, ".")[0])
+
+		LogDeb(logContextReport, "  -timestamp: %s", timestamp)
+		LogDeb(logContextReport, "  -uuid: %s", uuid)
+
+		t := make([]string, 2)
+		t[0] = uuid
+		t[1] = timestamp
+		out = append(out, t)
+	}
+
+	return out, nil
+}
+
 // ReportInit initializes the Report module
 func ReportInit(cm *ConfigModule) {
 	logContextReport = LoggerContext{
