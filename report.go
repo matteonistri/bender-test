@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 	"fmt"
+	"io/ioutil"
+	"io"
 )
 
 var logContextReport LoggerContext
@@ -89,7 +91,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 
 // UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
-
+	//waiting for file if not available
 	if ctx.status != FileClose{
 		for ctx.status != FileOpen{}
 	} else {
@@ -113,6 +115,45 @@ func (ctx *ReportContext) UpdateString(s string) {
 		return
 	}
 	LogInf(logContextConfig, "%s", s)
+}
+
+// Read reads <size> byte, starting from <offset> for the specified test name
+// and uuid
+func (ctx *ReportContext) Read (offset, size int64) []byte{
+	//waiting for file if not available
+	if ctx.status != FileClose{
+		for ctx.status != FileOpen{}
+	} else {
+		LogErr(logContextReport, "Cannot open this report")
+		return nil
+	}
+
+	_, err := ctx.file.Seek(offset, 0)
+	if err != nil {
+		LogErr(logContextReport, "Cannot seek to specified offset. %s", err)
+		return nil
+	}
+
+	var buf []byte
+	if size < 0 {
+		//read until EOF
+		buf, err = ioutil.ReadAll(ctx.file)
+		if err != nil {
+			LogErr(logContextReport, "Cannot read from file. %s", err)
+			return nil
+		}
+
+	} else {
+		//read <size> bytes
+		buf = make([]byte, size)
+		_, err = io.ReadFull(ctx.file, buf)
+		if err != nil {
+			LogErr(logContextReport, "Error reading from file. %s", err)
+			return nil
+		}
+	}
+
+	return buf
 }
 
 // ReportInit initializes the Report module
