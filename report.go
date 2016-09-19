@@ -37,7 +37,6 @@ type ReportContext struct {
 	status    string
 }
 
-type ReportPub struct{}
 
 // ReportInterface ...
 type ReportInterface interface {
@@ -49,7 +48,7 @@ type ReportInterface interface {
 
 // New fills a ReportContext struct attributes and creates the log file (as
 // well as the parent directory, if not existent)
-func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) {
+func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) error{
 	ctx.name = name
 	ctx.uuid = uuid
 	ctx.timestamp = timestamp
@@ -63,7 +62,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 		err = os.Mkdir(dir, 0775)
 		if err != nil {
 			LogErr(logContextReport, "Unable to make dir %s", dir)
-			panic(err)
+			return errors.New("Unable to make report dir")
 		}
 	}
 
@@ -83,12 +82,12 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	f, err = os.OpenFile(fpath, perms, 0666)
 	if err != nil {
 		LogErr(logContextReport, "Cannot create file %s", fpath)
-		panic(err)
+		return errors.New("Cannot create report file")
 	}
 
 	ctx.file = f
 	ctx.status = FileOpen
-	return
+	return nil
 }
 
 // UpdateString appends a string to the log file
