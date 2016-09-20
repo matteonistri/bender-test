@@ -54,8 +54,8 @@ func TestRunnerF(t *testing.T) {
 	}
 	LogInf(logContextTestRunner, "Foo Test..")
 	ret, count = runner("foo", 5)
-	if !(ret == JobFailed && count == 0) {
-		t.Errorf("Foo script should fail,0 [%v,%v].", ret, count)
+	if !(ret == JobCompleted && count != 0) {
+		t.Errorf("Foo script should be completed, >0 [%v,%v].", ret, count)
 	}
 	LogInf(logContextTestRunner, "Uno Test..")
 	ret, count = runner("uno", 5)

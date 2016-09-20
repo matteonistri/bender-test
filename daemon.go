@@ -63,7 +63,6 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive LOG[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
-	rep := &ReportPub{}
 	name := r.PathParams["script"]
 	ids := r.Form["uuid"]
 	var buffer []byte
@@ -72,15 +71,13 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	var err error
 
 	if len(ids) > 0 {
-		id := ids[0]
-		buffer, err = rep.Read(name, id, 0, 0)
-		if err != nil {
-			LogErr(logContextDaemon, "Unable to find log for this script")
-			return
-		}
+		rep := GetReportContext()
+		buffer = rep.Read(rep.offset, -1)
+		rep.offset += int64(len(buffer))
+
 		js, err = json.Marshal(string(buffer))
 	} else {
-		list, err = rep.List(name)
+		list, err = ReportList(name)
 		if err != nil {
 			LogErr(logContextDaemon, "Unable to find log for this script")
 			return

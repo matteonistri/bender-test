@@ -1,23 +1,31 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
 	"path/filepath"
-	"strings"
+	"os"
 	"time"
+	"fmt"
+	"io/ioutil"
+	"io"
+	"errors"
+	"strings"
 )
 
 var logContextReport LoggerContext
+
 var reportLocalContext ReportLocalContext
 
 // ReportLocalContext ...
 type ReportLocalContext struct {
 	path string
 }
+
+const (
+	FileOpen  = "opened"
+	FileClose = "closed"
+	FileRead  = "reading"
+	FileWrite = "writing"
+)
 
 // ReportContext ...
 type ReportContext struct {
@@ -26,7 +34,10 @@ type ReportContext struct {
 	timestamp time.Time
 	appnd     bool
 	file      *os.File
+	status    string
+	offset    int64
 }
+
 
 // ReportInterface ...
 type ReportInterface interface {
@@ -36,22 +47,14 @@ type ReportInterface interface {
 	Report() []byte
 }
 
-// ReportPubInterface ...
-type ReportPubInterface interface {
-	List(name string) ([][]string, error)
-	Read(name, uuid string, size, offset int64) ([]byte, error)
-}
-
-// ReportPub ...
-type ReportPub struct{}
-
 // New fills a ReportContext struct attributes and creates the log file (as
 // well as the parent directory, if not existent)
-func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) {
+func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool) error{
 	ctx.name = name
 	ctx.uuid = uuid
 	ctx.timestamp = timestamp
 	ctx.appnd = appnd
+	ctx.offset = 0
 
 	// make dir if it doesn't exist
 	dir := filepath.Join(reportLocalContext.path, name)
@@ -61,7 +64,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 		err = os.Mkdir(dir, 0775)
 		if err != nil {
 			LogErr(logContextReport, "Unable to make dir %s", dir)
-			panic(err)
+			return errors.New("Unable to make report dir")
 		}
 	}
 
@@ -81,77 +84,127 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	f, err = os.OpenFile(fpath, perms, 0666)
 	if err != nil {
 		LogErr(logContextReport, "Cannot create file %s", fpath)
-		panic(err)
+		return errors.New("Cannot create report file")
 	}
 
 	ctx.file = f
-	return
-}
-
-// Update appends bytes to the log file
-func (ctx *ReportContext) Update(b []byte) {
-	if ctx.appnd {
-		_, err := ctx.file.Seek(0, 2)
-		if err != nil {
-			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
-			panic(err)
-		}
-	}
-
-	_, err := ctx.file.Write(b)
-	if err != nil {
-		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
-		panic(err)
-	}
-	LogInf(logContextConfig, "%s", b)
+	ctx.status = FileOpen
+	return nil
 }
 
 // UpdateString appends a string to the log file
 func (ctx *ReportContext) UpdateString(s string) {
+	//waiting for file if not available
+	if ctx.status != FileClose{
+		for ctx.status != FileOpen{}
+	} else {
+		LogErr(logContextReport, "Cannot write on closed report")
+		return
+	}
+
+	ctx.status = FileWrite
+	defer func(){ ctx.status = FileOpen}()
 	if ctx.appnd {
 		_, err := ctx.file.Seek(0, 2)
 		if err != nil {
 			LogErr(logContextReport, "Cannot seek to end of file. %s", err)
-			panic(err)
+			return
 		}
 	}
 
 	_, err := ctx.file.WriteString(s)
 	if err != nil {
 		LogErr(logContextReport, "Cannot write to file %s", ctx.file)
-		panic(err)
+		return
 	}
 	LogInf(logContextConfig, "%s", s)
 }
 
-// Report returns the content of the log file as bytes
-func (ctx *ReportContext) Report() []byte {
-	_, err := ctx.file.Seek(0, 0)
+// Read reads <size> byte, starting from <offset> for the specified test name
+// and uuid
+func (ctx *ReportContext) Read (offset, size int64) []byte{
+	//waiting for file if not available
+	if ctx.status != FileClose{
+		for ctx.status != FileOpen{}
+	} else {
+		LogErr(logContextReport, "Cannot open this report")
+		return nil
+	}
+
+	_, err := ctx.file.Seek(offset, 0)
 	if err != nil {
-		LogErr(logContextReport, "Cannot seek to start of file. %s", err)
-		panic(err)
+		LogErr(logContextReport, "Cannot seek to specified offset. %s", err)
+		return nil
+	}
+
+	var buf []byte
+	if size < 0 {
+		//read until EOF
+		buf, err = ioutil.ReadAll(ctx.file)
+		if err != nil {
+			LogErr(logContextReport, "Cannot read from file. %s", err)
+			return nil
+		}
+
+	} else {
+		//read <size> bytes
+		buf = make([]byte, size)
+		_, err = io.ReadFull(ctx.file, buf)
+		if err != nil {
+			LogErr(logContextReport, "Error reading from file. %s", err)
+			return nil
+		}
+	}
+
+	return buf
+}
+
+//Close closes the report file
+func (ctx *ReportContext) Close() {
+	err := ctx.file.Close()
+	if err != nil {
+		LogErr(logContextReport, "Error while closing file. %s", err)
+		return
+	}
+	ctx.status = FileClose
+}
+
+// Report returns the content of the log file as bytes
+func Report(name, uuid string) ([]byte, error){
+	dir := filepath.Join(reportLocalContext.path, name)
+	_, err := os.Stat(dir)
+	if err != nil {
+		LogWar(logContextReport, "No logs available for script %s", name)
+		err := errors.New("No logs available for script " + name)
+		return nil, err
+	}
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		LogWar(logContextReport, "Cannot stat %s", dir)
+		err := errors.New("Cannot stat " + name)
+		return nil, err
 	}
 
 	var out []byte
-	buff := make([]byte, 1024)
-	for {
-		n, err := ctx.file.Read(buff)
-		if err != nil && err != io.EOF {
-			LogErr(logContextReport, "Cannot read file. %s", err)
-			panic(err)
+	for _, file := range files {
+		if strings.Contains(file.Name(), uuid) {
+			fpath := filepath.Join(dir, file.Name())
+
+			out, err = ioutil.ReadFile(fpath)
+			if err != nil {
+				LogWar(logContextReport, "Cannot open log file %s", fpath)
+				return nil, err
+			}
 		}
-		if n == 0 {
-			break
-		}
-		out = append(out, buff[:n]...)
 	}
 
-	return out
+	return out, nil
 }
 
 // List returns a list of available log files for the specified test name.
 // Available log files are specified with their uuid and timestamp.
-func (rp *ReportPub) List(name string) ([][]string, error) {
+func ReportList(name string) ([][]string, error) {
 	var out [][]string
 
 	// look for dir 'name' in logs dir
@@ -193,62 +246,6 @@ func (rp *ReportPub) List(name string) ([][]string, error) {
 	}
 
 	return out, nil
-}
-
-// Read reads <size> byte, starting from <offset> for the specified test name
-// and uuid
-func (rp *ReportPub) Read(name, uuid string, size, offset int64) ([]byte, error) {
-	// locate file
-	dir := filepath.Join(reportLocalContext.path, name)
-	_, err := os.Stat(dir)
-	if err != nil {
-		LogWar(logContextReport, "No logs available for script %s", name)
-		err := errors.New("No logs available for script " + name)
-		return nil, err
-	}
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		LogWar(logContextReport, "Cannot stat %s", dir)
-		err := errors.New("Cannot stat " + name)
-		return nil, err
-	}
-	for _, file := range files {
-		if strings.Contains(file.Name(), uuid) {
-			fpath := filepath.Join(dir, file.Name())
-			var out []byte
-
-			if size <= 0 {
-				// read the whole file
-				out, err = ioutil.ReadFile(fpath)
-				if err != nil {
-					LogWar(logContextReport, "Cannot open log file %s", fpath)
-					return nil, err
-				}
-			} else {
-				// attempt to open file
-				f, ferr := os.Open(fpath)
-				if ferr != nil {
-					LogErr(logContextReport, "Cannot open file %s", fpath)
-					return nil, ferr
-				}
-				defer f.Close()
-
-				// seek and read
-				f.Seek(offset, 0)
-				out = make([]byte, size)
-				_, err = io.ReadFull(f, out)
-				if err != nil {
-					LogErr(logContextReport, "Error reading from file %s: %s", fpath, err)
-					return nil, err
-				}
-			}
-
-			return out, nil
-		}
-	}
-
-	err = errors.New("No log for test" + name + "with uuid" + uuid)
-	return nil, err
 }
 
 // ReportInit initializes the Report module
