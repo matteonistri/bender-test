@@ -60,8 +60,9 @@ func workerLoop() {
 				case <-time.After(params.timeout * time.Second):
 					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
 					LogInf(logContextWorker, "%v", job)
-					job.Name = JobTimeout
+					job.Status = JobTimeout
 					exit = true
+					workerLocalStatus.SetState(*job)
 				}
 			}
 		}
