@@ -106,6 +106,7 @@
 						dataType: 'json',
 						success: function(uuid){
 							var id = uuid
+							$("#output").html("")
 							intervalId = setInterval(function(){ GetOutput(name, uuid) }, 100);
 						}
 					});
@@ -177,7 +178,7 @@
 				type: 'get',
 				dataType: 'json',
 				success: function(out) {
-					$("#output").html(out)
+					$("#output").html($("#output").text() + out)
 				}
 			});
 		}

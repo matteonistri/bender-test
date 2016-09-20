@@ -35,6 +35,7 @@ type ReportContext struct {
 	appnd     bool
 	file      *os.File
 	status    string
+	offset    int64
 }
 
 
@@ -53,6 +54,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	ctx.uuid = uuid
 	ctx.timestamp = timestamp
 	ctx.appnd = appnd
+	ctx.offset = 0
 
 	// make dir if it doesn't exist
 	dir := filepath.Join(reportLocalContext.path, name)

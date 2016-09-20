@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+var rep *ReportContext = &ReportContext{}
 var submitChannel chan params
 var logContextWorker LoggerContext
 var workerLocalStatus *StatusModule
@@ -30,15 +31,21 @@ func workerLoop() {
 			stateChannel := job.State()
 			previousState := ""
 
-			//rep := &ReportContext{}
-			//rep.New(params.name, params.uuid, start, true)
-			exit := false
+			var exit bool
+			err := rep.New(params.name, params.uuid, time.Now(), true)
+			if err != nil {
+				LogErr(logContextWorker, "Error while creating report: %s", err.Error())
+				exit = true
+			} else {
+				exit = false
+			}
+
 			for !exit {
-				sts, num := workerLocalStatus.GetState()
-				LogDeb(logContextWorker, "State: %v %v", sts, num)
 				select {
 				case m := <-logChannel:
 					LogDeb(logContextWorker, m)
+					rep.UpdateString(m)
+					time.Sleep(500 * time.Millisecond)
 				case s := <-stateChannel:
 					if previousState != s {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
@@ -79,6 +86,10 @@ func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 	}
 
 	submitChannel <- params
+}
+
+func GetReportContext() *ReportContext{
+	return rep
 }
 
 // WorkerInit ...
