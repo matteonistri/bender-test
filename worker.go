@@ -75,7 +75,9 @@ func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 	for k, v := range argsMap {
 		for _, x := range v {
 			args = append(args, k)
-			args = append(args, string(x))
+			if x != "" {
+				args = append(args, string(x))
+			}
 		}
 	}
 

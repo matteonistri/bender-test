@@ -40,6 +40,17 @@
 
 	  <div class="row">
 	  	<div class="col-md-5">
+	      <input type="text" id="args" style="width:100%" placeholder="Arguments">
+	    </div>
+	  	<div class="col-md-4">
+	  	  <button type="button" class="btn btn-default btn-lg" style="margin-top:10;width:100%" id="run">
+  			<span class="glyphicon glyphicon-play" aria-hidden="true"></span> Run
+		  </button>
+	  	</div>
+	  </div>
+
+	  <div class="row">
+	  	<div class="col-md-5">
 	  		<div class="panel panel-default">
 			  <div class="panel-heading">
 			    <h3 class="panel-title">Output</h3>
@@ -48,21 +59,9 @@
 			  </div>
 			</div>
 	  	</div>
-	  	<div class="col-md-4">
-	  	  <button type="button" class="btn btn-default btn-lg" style="margin-top:10;width:100%" id="run">
-  			<span class="glyphicon glyphicon-play" aria-hidden="true"></span> Run
-		  </button>
-	  	</div>
 	  </div>
 	</div>
 
-	<div class="panel panel-default" style="float:left;width:15%">
-	  <div class="panel-heading">
-	    <h3 class="panel-title" id="panelTitle">Set</h3>
-	  </div>
-	  <div class="panel-body" id="panelBody">
-	  </div>
-	</div>
 
 	<script>
 		$('document').ready(function(){
@@ -99,9 +98,15 @@
 
 			$("#run").click(function(){
 				var name = $("#list option:selected").text();
+				var args = $("#args").val().split(" ")
+				var req = 'run/' + name + "?"
+				args.forEach(function(arg) {
+    				req = req + arg + "&"
+				});
+				console.log(req)
 				if ($('#scripts').is(":checked")) {
 					$.ajax({
-						url: 'run/' + name,
+						url: req,
 						type: 'get',
 						dataType: 'json',
 						success: function(uuid){
