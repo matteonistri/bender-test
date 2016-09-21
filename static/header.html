@@ -74,18 +74,28 @@
 
       function myWebsocketStart()
       {
-         var ws = new WebSocket("ws://localhost:8080/websocket");
+         var ws = new WebSocket("ws://10.3.12.84:8080/websocket");
 
-         ws.onmessage = function (status)
-         {
-            var st = JSON.parse(status["data"]);
-            if (st == "working")
-              $("#serverstatus").html("Server Status: <span class='label label-danger'>" + st + "</span>");
-            else {
-              $("#serverstatus").html("Server Status: <span class='label label-success'>" + st + "</span>");
-              clearInterval(intervalId);
+        ws.onmessage = function (json)
+        {
+            console.log(json["data"])
+            var message = JSON.parse(json["data"]);
+            if (message.type == "serverstatus") {
+              if (message.msg == "working")
+                $("#serverstatus").html("Server Status: <span class='label label-danger'>" + message.msg + "</span>");
+              else {
+                $("#serverstatus").html("Server Status: <span class='label label-success'>" + message.msg + "</span>");
+                clearInterval(intervalId);
+              }
             }
-         };
+            else if (message.type == "output") {
+              $("#output").html($("#output").text() + message.msg)
+            }
+        };
+
+        ws.onclose = function() {
+          alert("websocket closed")
+        }
       }
 
     </script>

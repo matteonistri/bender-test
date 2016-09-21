@@ -16,6 +16,12 @@ import (
 
 var logContextDaemon LoggerContext
 var daemonLocalStatus *StatusModule
+var webChannel chan string
+
+type WebData struct {
+	Datatype string `json:"type"`
+	Msg     string `json:"msg"`
+}
 
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
@@ -63,7 +69,7 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 
 // LogHandler handles /log requests
 func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
-	//LogInf(logContextDaemon, "Receive LOG[%v] request from: %v", "Daemon", r.RemoteAddr)
+	LogInf(logContextDaemon, "Receive LOG[%v] request from: %v", "Daemon", r.RemoteAddr)
 	r.ParseForm()
 	name := r.PathParams["script"]
 	ids := r.Form["uuid"]
@@ -101,7 +107,7 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 	//general state requests
 
 	if r.RequestURI == "/state" {
-		//LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
+		LogInf(logContextDaemon, "Receive STATE[%v] request from: %v", "Daemon", r.RemoteAddr)
 		js, err := json.Marshal(daemonLocalStatus)
 
 		if err != nil {
@@ -196,7 +202,7 @@ func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
 
 	conn, err := upgrader.Upgrade(w, r.Request, nil)
   	if err != nil {
-    	LogErr(logContextDaemon, "websocket connection establishment failed")
+    	LogErr(logContextDaemon, "websocket connection establishment failed, %s", err)
     	return
   	}
 	LogInf(logContextDaemon,"Websocket connected")
@@ -206,16 +212,33 @@ func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
   		current, _ := daemonLocalStatus.GetState()
 
   		if current != previous {
-  			js, err :=  json.Marshal(current)
+  			msg := WebData{Datatype: "serverstatus", Msg: current}
+  			js, err :=  json.Marshal(msg)
 	  		if err != nil {
 		        LogErr(logContextDaemon, "json creation failed")
 		    }
 
 		    err = conn.WriteMessage(websocket.TextMessage, js)
 		    if err != nil {
-		        LogErr(logContextDaemon, "websocket message sending failed")
+		        LogErr(logContextDaemon, "websocket message sending failed, %s", err)
 		    }
 		    previous = current
+  		}
+
+  		select {
+  			case m := <- webChannel:
+  					msg := WebData{Datatype: "output", Msg: m}
+  					json, err := json.Marshal(msg)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "json creation failed")
+		    		}
+
+  					err = conn.WriteMessage(websocket.TextMessage, json)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "websocket message sending failed, %s", err)
+		    		}
+		    		time.Sleep(100 * time.Millisecond)
+  			default: time.Sleep(50 * time.Millisecond)
   		}
   	}
 }
@@ -223,6 +246,7 @@ func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
 // DaemonInit ...
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	daemonLocalStatus = sm
+	webChannel = make(chan string)
 
 	// init logger
 	logContextDaemon = LoggerContext{

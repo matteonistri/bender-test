@@ -45,7 +45,7 @@ func workerLoop() {
 				case m := <-logChannel:
 					LogDeb(logContextWorker, m)
 					rep.UpdateString(m)
-					time.Sleep(500 * time.Millisecond)
+					webChannel <- m
 				case s := <-stateChannel:
 					if previousState != s {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
