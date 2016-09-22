@@ -51,6 +51,7 @@ func workerLoop() {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
 						job.Status = s
 						previousState = s
+						webStatusChannel <- s
 					}
 					if s != JobWorking {
 						LogInf(logContextWorker, "%v", job)
@@ -61,6 +62,7 @@ func workerLoop() {
 					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
 					LogInf(logContextWorker, "%v", job)
 					job.Status = JobTimeout
+					webStatusChannel <- JobTimeout
 					exit = true
 					workerLocalStatus.SetState(*job)
 				}

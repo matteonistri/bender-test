@@ -17,6 +17,7 @@ import (
 var logContextDaemon LoggerContext
 var daemonLocalStatus *StatusModule
 var webChannel chan string
+var webStatusChannel chan string
 
 type WebData struct {
 	Datatype string `json:"type"`
@@ -238,6 +239,18 @@ func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
 		        		LogErr(logContextDaemon, "websocket message sending failed, %s", err)
 		    		}
 		    		time.Sleep(100 * time.Millisecond)
+		    case s := <-webStatusChannel:
+		    		msg := WebData{Datatype: "scriptstatus", Msg: s}
+  					json, err := json.Marshal(msg)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "json creation failed")
+		    		}
+
+  					err = conn.WriteMessage(websocket.TextMessage, json)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "websocket message sending failed, %s", err)
+		    		}
+		    		time.Sleep(100 * time.Millisecond)
   			default: time.Sleep(50 * time.Millisecond)
   		}
   	}
@@ -247,6 +260,7 @@ func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	daemonLocalStatus = sm
 	webChannel = make(chan string)
+	webStatusChannel = make(chan string)
 
 	// init logger
 	logContextDaemon = LoggerContext{
