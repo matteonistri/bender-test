@@ -74,7 +74,7 @@
 
       function myWebsocketStart()
       {
-         var ws = new WebSocket("ws://10.3.12.84:8080/websocket");
+         var ws = new WebSocket("ws://" + location.host + "/websocket");
 
         ws.onmessage = function (json)
         {
