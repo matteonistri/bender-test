@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-var rep *ReportContext = &ReportContext{}
 var submitChannel chan params
 var logContextWorker LoggerContext
 var workerLocalStatus *StatusModule
@@ -32,6 +31,7 @@ func workerLoop() {
 			previousState := ""
 
 			var exit bool
+			rep := &ReportContext{}
 			err := rep.New(params.name, params.uuid, time.Now(), true)
 			if err != nil {
 				LogErr(logContextWorker, "Error while creating report: %s", err.Error())
@@ -91,10 +91,6 @@ func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 	}
 
 	submitChannel <- params
-}
-
-func GetReportContext() *ReportContext{
-	return rep
 }
 
 // WorkerInit ...

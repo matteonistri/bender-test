@@ -55,16 +55,6 @@ func (c *Context) RunHandler(w web.ResponseWriter, r *web.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	js, err := json.Marshal(uuid)
-
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		LogErr(logContextDaemon, "json creation failed")
-		return
-	}
-
-	w.Write(js)
-
 	Submit(name, uuid, params, time.Duration(timeout))
 }
 
@@ -74,16 +64,17 @@ func (c *Context) LogHandler(w web.ResponseWriter, r *web.Request) {
 	r.ParseForm()
 	name := r.PathParams["script"]
 	ids := r.Form["uuid"]
-	var buffer []byte
 	var list [][]string
 	var js []byte
 	var err error
 
 	if len(ids) > 0 {
-		rep := GetReportContext()
-		buffer = rep.Read(rep.offset, -1)
-		rep.offset += int64(len(buffer))
-
+		id := ids[0]
+		buffer, readErr := Report(name, id)
+		if readErr != nil {
+			LogErr(logContextDaemon, "Error while reading report")
+			return
+		}
 		js, err = json.Marshal(string(buffer))
 	} else {
 		list, err = ReportList(name)
