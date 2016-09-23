@@ -4,16 +4,25 @@ package main
 
 import (
 	"encoding/json"
-	"html/template"
 	"net/http"
 	"time"
+	"os"
+	"io/ioutil"
 
 	"github.com/gocraft/web"
 	"github.com/satori/go.uuid"
+	"github.com/gorilla/websocket"
 )
 
 var logContextDaemon LoggerContext
 var daemonLocalStatus *StatusModule
+var webChannel chan string
+var webStatusChannel chan string
+
+type WebData struct {
+	Datatype string `json:"type"`
+	Msg     string `json:"msg"`
+}
 
 type statusJobs struct {
 	Jobs []Job `json:"jobs"`
@@ -131,14 +140,18 @@ func (c *Context) StatusHandler(w web.ResponseWriter, r *web.Request) {
 // HomeHandler ...
 func (c *Context) HomeHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive HOME[%v] request from: %v", "Daemon", r.RemoteAddr)
-	job := Job{Name: "hellosleep",
-		UUID:    "acfjsif-909D",
-		Created: time.Now(),
-		Timeout: 54}
 
-	t := template.New("New template")
-	t, _ = template.ParseFiles("static/run.html")
-	t.Execute(w, job)
+	indexFile, err := os.Open("static/run.html")
+    if err != nil {
+        LogErr(logContextDaemon, "cannot open html home file")
+        return
+    }
+    index, err := ioutil.ReadAll(indexFile)
+    if err != nil {
+        LogErr(logContextDaemon, "cannot read from html home file")
+        return
+    }
+    w.Write(index)
 }
 
 //ListHandler ...
@@ -181,9 +194,73 @@ func (c *Context) SetListHandler(w web.ResponseWriter, r *web.Request) {
 	w.Write(js)
 }
 
+func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive WEBSOCKET[%v] request from: %v", "Daemon", r.RemoteAddr)
+	var upgrader = websocket.Upgrader {
+    	ReadBufferSize: 1024,
+    	WriteBufferSize: 1024,
+	}
+
+	conn, err := upgrader.Upgrade(w, r.Request, nil)
+  	if err != nil {
+    	LogErr(logContextDaemon, "websocket connection establishment failed, %s", err)
+    	return
+  	}
+	LogInf(logContextDaemon,"Websocket connected")
+
+	previous := ""
+  	for {
+  		current, _ := daemonLocalStatus.GetState()
+
+  		if current != previous {
+  			msg := WebData{Datatype: "serverstatus", Msg: current}
+  			js, err :=  json.Marshal(msg)
+	  		if err != nil {
+		        LogErr(logContextDaemon, "json creation failed")
+		    }
+
+		    err = conn.WriteMessage(websocket.TextMessage, js)
+		    if err != nil {
+		        LogErr(logContextDaemon, "websocket message sending failed, %s", err)
+		    }
+		    previous = current
+  		}
+
+  		select {
+  			case m := <- webChannel:
+  					msg := WebData{Datatype: "output", Msg: m}
+  					json, err := json.Marshal(msg)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "json creation failed")
+		    		}
+
+  					err = conn.WriteMessage(websocket.TextMessage, json)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "websocket message sending failed, %s", err)
+		    		}
+		    		time.Sleep(100 * time.Millisecond)
+		    case s := <-webStatusChannel:
+		    		msg := WebData{Datatype: "scriptstatus", Msg: s}
+  					json, err := json.Marshal(msg)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "json creation failed")
+		    		}
+
+  					err = conn.WriteMessage(websocket.TextMessage, json)
+  					if err != nil {
+		        		LogErr(logContextDaemon, "websocket message sending failed, %s", err)
+		    		}
+		    		time.Sleep(100 * time.Millisecond)
+  			default: time.Sleep(50 * time.Millisecond)
+  		}
+  	}
+}
+
 // DaemonInit ...
 func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	daemonLocalStatus = sm
+	webChannel = make(chan string)
+	webStatusChannel = make(chan string)
 
 	// init logger
 	logContextDaemon = LoggerContext{
@@ -202,6 +279,7 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router.Get("/", (*Context).HomeHandler)
 	router.Get("/service/list", (*Context).ListHandler)
 	router.Get("/service/sets", (*Context).SetListHandler)
+	router.Get("/websocket", (*Context).Websocket)
 
 	// start http server
 	address := cm.Get("daemon", "address", "0.0.0.0")

@@ -53,7 +53,7 @@
     <script>
       var intervalId = 0;
       $('document').ready(function(){
-        setInterval("CheckStatus()", 100);
+        myWebsocketStart()
       });
 
       function CheckStatus() {
@@ -70,6 +70,48 @@
             }
           }
         });
+      }
+
+      function myWebsocketStart()
+      {
+         var ws = new WebSocket("ws://" + location.host + "/websocket");
+
+        ws.onmessage = function (json)
+        {
+            console.log(json["data"])
+            var message = JSON.parse(json["data"]);
+            if (message.type == "serverstatus") {
+              if (message.msg == "working")
+                $("#serverstatus").html("Server Status: <span class='label label-danger'>" + message.msg + "</span>");
+              else {
+                $("#serverstatus").html("Server Status: <span class='label label-success'>" + message.msg + "</span>");
+                clearInterval(intervalId);
+              }
+            }
+            else if (message.type == "output") {
+              $("#output").html($("#output").text() + message.msg)
+            }
+            else if(message.type == "scriptstatus") {
+              switch(message.msg) {
+                case "working":
+                  $("#scrst").html("Script status:<span class='label label-warning'>" + message.msg + "</span>")
+                  break
+                case "completed":
+                  $("#scrst").html("Script status:<span class='label label-success'>" + message.msg + "</span>")
+                  break
+                case "timeout":
+                  $("#scrst").html("Script status:<span class='label label-default'>" + message.msg + "</span>")
+                  break
+                case "failed":
+                  $("#scrst").html("Script status:<span class='label label-danger'>" + message.msg + "</span>")
+                  break
+              }
+            }
+        };
+
+        ws.onclose = function() {
+          alert("websocket closed")
+        }
       }
 
     </script>

@@ -45,12 +45,13 @@ func workerLoop() {
 				case m := <-logChannel:
 					LogDeb(logContextWorker, m)
 					rep.UpdateString(m)
-					time.Sleep(500 * time.Millisecond)
+					webChannel <- m
 				case s := <-stateChannel:
 					if previousState != s {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
 						job.Status = s
 						previousState = s
+						webStatusChannel <- s
 					}
 					if s != JobWorking {
 						LogInf(logContextWorker, "%v", job)
@@ -61,6 +62,7 @@ func workerLoop() {
 					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
 					LogInf(logContextWorker, "%v", job)
 					job.Status = JobTimeout
+					webStatusChannel <- JobTimeout
 					exit = true
 					workerLocalStatus.SetState(*job)
 				}
@@ -75,7 +77,9 @@ func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 	for k, v := range argsMap {
 		for _, x := range v {
 			args = append(args, k)
-			args = append(args, string(x))
+			if x != "" {
+				args = append(args, string(x))
+			}
 		}
 	}
 
