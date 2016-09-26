@@ -53,6 +53,13 @@
     <script>
       $('document').ready(function(){
         myWebsocketStart()
+
+        window.onbeforeunload = function() {
+          $.ajax({
+            url: "/closews",
+            type: 'get',
+          });
+        };
       });
 
       function myWebsocketStart()
@@ -90,10 +97,6 @@
               }
             }
         };
-
-        ws.onclose = function() {
-          alert("websocket closed")
-        }
       }
 
     </script>

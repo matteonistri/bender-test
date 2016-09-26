@@ -14,6 +14,7 @@ type params struct {
 	uuid    string
 	args    []string
 	timeout time.Duration
+	ip      string
 }
 
 //Receive a job from channel and call the runner to execute it
@@ -22,7 +23,7 @@ func workerLoop() {
 		params := <-submitChannel
 
 		job := &Job{}
-		ret := job.Run(params.name, params.uuid, params.args)
+		ret := job.Run(params.name, params.uuid, params.ip, params.args)
 		if ret < 0 {
 			job.Status = JobNotFound
 		} else {
@@ -45,13 +46,24 @@ func workerLoop() {
 				case m := <-logChannel:
 					LogDeb(logContextWorker, m)
 					rep.UpdateString(m)
-					webChannel <- m
+					wd := WebData{
+						Msg: m,
+						Datatype: "output",
+						Ip: job.ip,
+					}
+					webChannel <- wd
+					time.Sleep(500 * time.Millisecond)
 				case s := <-stateChannel:
 					if previousState != s {
 						LogDeb(logContextWorker, "Receive [%v] state [%v]", job.Name, s)
 						job.Status = s
 						previousState = s
-						webStatusChannel <- s
+						wd := WebData{
+							Msg: s,
+							Datatype: "scriptstatus",
+							Ip: job.ip,
+						}
+						webChannel <- wd
 					}
 					if s != JobWorking {
 						LogInf(logContextWorker, "%v", job)
@@ -62,7 +74,12 @@ func workerLoop() {
 					LogDeb(logContextWorker, "Exec script [%v] Timeout! [%v]", job.Name, params.timeout*time.Second)
 					LogInf(logContextWorker, "%v", job)
 					job.Status = JobTimeout
-					webStatusChannel <- JobTimeout
+					wd := WebData{
+						Msg: JobTimeout,
+						Datatype: "scriptstatus",
+						Ip: job.ip,
+					}
+					webChannel <- wd
 					exit = true
 					workerLocalStatus.SetState(*job)
 				}
@@ -72,7 +89,7 @@ func workerLoop() {
 }
 
 //Submit send a new job on the channel
-func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
+func Submit(name, uuid, ip string, argsMap url.Values, timeout time.Duration) {
 	var args []string
 	for k, v := range argsMap {
 		for _, x := range v {
@@ -88,6 +105,7 @@ func Submit(name, uuid string, argsMap url.Values, timeout time.Duration) {
 		uuid:    uuid,
 		args:    args,
 		timeout: timeout,
+		ip:      ip,
 	}
 
 	submitChannel <- params

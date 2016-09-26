@@ -35,6 +35,7 @@ type Job struct {
 	Timeout     int
 	outChan     chan string
 	stateChan   chan string
+	ip          string
 }
 
 //JobInterface ...
@@ -114,13 +115,14 @@ func runLoop(job *Job, scriptPath string) {
 }
 
 //Run put in working the script
-func (job *Job) Run(script, UUID string, args []string) int {
+func (job *Job) Run(script, UUID, ip string, args []string) int {
 	job.Name = script
 	job.UUID = UUID
 	job.Params = args
 	job.Status = JobSubmitted
 	job.outChan = make(chan string, 1)
 	job.stateChan = make(chan string, 1)
+	job.ip = ip
 
 	LogInf(logContextRunner, "Run [%v], State[%v]", script, job.Status)
 

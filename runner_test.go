@@ -7,7 +7,7 @@ import (
 
 func runner(name string, timeout time.Duration) (string, int) {
 	job := &Job{}
-	ret := job.Run(name, "f3628fa3-2b25-4dfd-ac2d-2c8a8613915c", []string{})
+	ret := job.Run(name, "f3628fa3-2b25-4dfd-ac2d-2c8a8613915c", "127.0.0.1", []string{})
 	if ret < 0 {
 		return JobNotFound, 0
 	}
