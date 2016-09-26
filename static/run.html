@@ -85,18 +85,6 @@
 			$("#sets").click(function(){
 				RefreshSets()
 				var set = $("#list option:selected").text()
-				$.ajax({
-					url: "service/sets?set=" + set,
-					type: "get",
-					dataType: "json",
-					success: function(scripts){
-						$("#panelTitle").html(set)
-						$("#panelBody").html("")
-						$.each(scripts, function(i, val){
-							$("#panelBody").append("<p>" + val + "</p>")
-						});
-					}
-				});
 			});
 
 			$("#run").click(function(){
@@ -111,38 +99,14 @@
 					$.ajax({
 						url: req,
 						type: 'get',
-						dataType: 'json',
-						success: function(uuid){
-							var id = uuid
+						dataType: 'text',
+						success: function(data){
 							$("#output").html("")
 						}
 					});
 				}
 				else {
-					console.log("sent sets req");
-					$.ajax({
-						url: 'service/sets?set=' + name,
-						type: 'get',
-						dataType: 'json',
-						success: function(setl){
-							console.log(setl)
-							$.each(setl, function(i, val){
-								while($("#serverstatus").text() == "Server Status: working"){
-									console.log("working")
-								}
-								console.log("sent run req");
-								$.ajax({
-									url: 'run/' + val,
-									type: 'get',
-									dataType: 'json',
-									success: function(uuid){
-										var id = uuid
-										intervalId = setInterval(function(){ GetOutput(name, uuid) }, 100);
-									}
-								});
-							});
-						}
-					});
+					console.log("TODO sent sets req");
 				}
 			});
 		});
@@ -177,17 +141,6 @@
 			});
 
 			$('#sets').prop('checked',true);
-		}
-
-		function GetOutput(name, uuid){
-			$.ajax({
-				url: 'log/' + name + '?uuid=' + uuid,
-				type: 'get',
-				dataType: 'json',
-				success: function(out) {
-					$("#output").html($("#output").text() + out)
-				}
-			});
 		}
 	</script>
 </body>

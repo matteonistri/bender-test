@@ -51,26 +51,16 @@
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="js/bootstrap.min.js"></script>
     <script>
-      var intervalId = 0;
       $('document').ready(function(){
         myWebsocketStart()
-      });
 
-      function CheckStatus() {
-        $.ajax({
-          url: '/state',
-          type: 'get',
-          dataType: 'json',
-          success: function(status) {
-            if (status.State == "working")
-              $("#serverstatus").html("Server Status: <span class='label label-danger'>" + status.State + "</span>");
-            else {
-              $("#serverstatus").html("Server Status: <span class='label label-success'>" + status.State + "</span>");
-              clearInterval(intervalId);
-            }
-          }
-        });
-      }
+        window.onbeforeunload = function() {
+          $.ajax({
+            url: "/closews",
+            type: 'get',
+          });
+        };
+      });
 
       function myWebsocketStart()
       {
@@ -85,7 +75,6 @@
                 $("#serverstatus").html("Server Status: <span class='label label-danger'>" + message.msg + "</span>");
               else {
                 $("#serverstatus").html("Server Status: <span class='label label-success'>" + message.msg + "</span>");
-                clearInterval(intervalId);
               }
             }
             else if (message.type == "output") {
@@ -108,10 +97,6 @@
               }
             }
         };
-
-        ws.onclose = function() {
-          alert("websocket closed")
-        }
       }
 
     </script>

@@ -21,6 +21,7 @@ func main() {
 	RunnerInit(&cm)
 	WorkerInit(&sm)
 	ReportInit(&cm)
+	WebsocketInit(&sm)
 
 	// Start daemon
 	DaemonInit(&sm, &cm)
