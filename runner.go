@@ -47,6 +47,7 @@ type JobInterface interface {
 
 var logContextRunner LoggerContext
 var localScriptPath string
+var localSetPath string
 
 //hasScript Check if a script exists
 func hasScript(script string) (string, bool) {
@@ -169,7 +170,7 @@ func List() []string {
 
 // GetSet ...
 func GetSet(set string) []string {
-	file, err := os.Open(filepath.Join("sets", set))
+	file, err := os.Open(filepath.Join(localSetPath, set))
 	var list []string
 
 	if err != nil {
@@ -187,7 +188,7 @@ func GetSet(set string) []string {
 
 // SetsList ...
 func SetsList() []string {
-	sets, err := ioutil.ReadDir("sets")
+	sets, err := ioutil.ReadDir(localSetPath)
 	var list []string
 
 	if err != nil {
@@ -205,10 +206,12 @@ func SetsList() []string {
 // RunnerInit ...
 func RunnerInit(cm *ConfigModule) {
 	localScriptPath = cm.Get("runner", "script_path", "scripts")
+	localSetPath = cm.Get("runner", "set_path", "sets")
 	logContextRunner = LoggerContext{
 		name:  "RUNNER",
 		level: cm.GetLogLevel("runner", 3)}
 
 	LogInf(logContextRunner, "Start")
 	LogInf(logContextRunner, "Script path[%v]", localScriptPath)
+	LogInf(logContextRunner, "Set path[%v]", localSetPath)
 }
