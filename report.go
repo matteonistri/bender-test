@@ -61,7 +61,7 @@ func (ctx *ReportContext) New(name, uuid string, timestamp time.Time, appnd bool
 	_, err := os.Stat(dir)
 	if err != nil {
 		LogWar(logContextReport, "No dir %s found, making it", dir)
-		err = os.Mkdir(dir, 0775)
+		err = os.MkdirAll(dir, 0775)
 		if err != nil {
 			LogErr(logContextReport, "Unable to make dir %s", dir)
 			return errors.New("Unable to make report dir")
@@ -246,6 +246,28 @@ func ReportList(name string) ([][]string, error) {
 	}
 
 	return out, nil
+}
+
+func CreateSetReport(repmap map[string]string, set string) {
+	rep := &ReportContext{}
+	err := rep.New(set, set, time.Now(), true)
+	if err != nil {
+		LogErr(logContextWorker, "Error while creating report: %s", err.Error())
+		return
+	}
+
+	for uuid, scr := range repmap {
+		s := fmt.Sprintf("OUTPUT OF %s\n\t", scr)
+		scr_name := strings.Split(scr, " ") [0]
+		out, err := Report(scr_name, uuid)
+		if err != nil {
+			LogErr(logContextWorker, "%s", err.Error())
+			return
+		}
+
+		rep.UpdateString(s)
+		rep.UpdateString(string(out) + "\n\n")
+	}
 }
 
 // ReportInit initializes the Report module

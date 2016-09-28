@@ -170,7 +170,7 @@ func List() []string {
 
 // GetSet ...
 func GetSet(set string) []string {
-	file, err := os.Open(filepath.Join(localSetPath, set))
+	file, err := os.Open(filepath.Join(localSetPath, set+".txt"))
 	var list []string
 
 	if err != nil {
@@ -197,7 +197,12 @@ func SetsList() []string {
 	}
 
 	for _, set := range sets {
-		list = append(list, set.Name())
+		n := strings.LastIndexByte(set.Name(), '.')
+		if n > 0 {
+			list = append(list, set.Name()[:n])
+		} else {
+			list = append(list, set.Name())
+		}
 	}
 
 	return list

@@ -183,6 +183,7 @@ func (c *Context) RunSetHandler(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive RUNSET[%v] request from: %v", "Daemon", r.RemoteAddr)
 	set := r.PathParams["set"]
 	scr_list := GetSet(set)
+	repmap := make(map[string]string)
 
 	for _, scr := range scr_list {
 		status, _ := daemonLocalStatus.GetState()
@@ -192,6 +193,7 @@ func (c *Context) RunSetHandler(w web.ResponseWriter, r *web.Request) {
 
 		name := strings.Split(scr, " ")[0]
 		uuid := uuid.NewV4().String()
+		repmap[uuid] = scr
 		timeout := 10
 		ip := strings.Split(r.RemoteAddr, ":")[0]
 		args := strings.Split(scr, " ")[1:]
@@ -205,6 +207,12 @@ func (c *Context) RunSetHandler(w web.ResponseWriter, r *web.Request) {
 
 		Submit(name, uuid, ip, params, time.Duration(timeout))
 	}
+	status, _ := daemonLocalStatus.GetState()
+	for status != DaemonIdle {
+		status , _ = daemonLocalStatus.GetState()
+	}
+	time.Sleep(500 * time.Millisecond)
+	CreateSetReport(repmap, set)
 }
 
 func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
