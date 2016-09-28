@@ -170,8 +170,24 @@ func List() []string {
 
 // GetSet ...
 func GetSet(set string) []string {
-	file, err := os.Open(filepath.Join(localSetPath, set+".txt"))
+	sets, err := ioutil.ReadDir(localSetPath)
 	var list []string
+	if err != nil {
+		LogErr(logContextRunner, "No sets dir found")
+		return list
+	}
+
+	name := ""
+	for _, file := range sets{
+		n := strings.LastIndexByte(file.Name(), '.')
+		if n > 0 && file.Name()[:n] == set{
+			name = file.Name()
+		} else if n <= 0 && file.Name() == set {
+			name = file.Name()
+		}
+	}
+
+	file, err := os.Open(filepath.Join(localSetPath, name))
 
 	if err != nil {
 		LogErr(logContextRunner, "Set file not found")
