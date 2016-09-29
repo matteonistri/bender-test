@@ -67,6 +67,13 @@ func workerLoop() {
 					}
 					if s != JobWorking {
 						LogInf(logContextWorker, "%v", job)
+						 wd := WebData{
+							Datatype: "output",
+							Msg: "<br>--------------------------<br>",
+							Ip: job.ip,
+						}
+						webChannel <- wd
+
 						exit = true
 					}
 					workerLocalStatus.SetState(*job)

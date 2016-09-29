@@ -15,56 +15,65 @@
 
 
 	<div class="container" style="float:left">
-	  <div class="row">
-	  	<div class="col-md-5">
-		  <label class="radio-inline"><input type="radio" name="optradio" id="scripts">Scripts</label>
-		  <label class="radio-inline"><input type="radio" name="optradio" id="sets">Sets</label>
-	  	</div>
-	  	<div class="col-md-4">
-		  <button type="button" class="btn btn-default btn-lg" style="width:100%" id="refreshSets">
-  			<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> Refresh Sets
-		  </button>
-	  	</div>
-	  </div>
-
-	  <div class="row">
-	    <div class="col-md-5">
-	      <select class="form-control" id="list"></select>
-	    </div>
-	    <div class="col-md-4">
-	      <button type="button" class="btn btn-default btn-lg" style="width:100%;margin-top:10" id="refresh">
-  			<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> Refresh Scripts
-		  </button>
-	    </div>
-	  </div>
-
-	  <div class="row">
-	  	<div class="col-md-5">
-	      <input type="text" id="args" style="width:100%" placeholder="Arguments">
-	    </div>
-	  	<div class="col-md-4">
-	  	  <button type="button" class="btn btn-default btn-lg" style="margin-top:10;width:100%" id="run">
-  			<span class="glyphicon glyphicon-play" aria-hidden="true"></span> Run
-		  </button>
-	  	</div>
-	  </div>
-
-	  <div class="row">
-	  	<div class="col-md-5">
-	  		<div class="panel panel-default">
-			  <div class="panel-heading">
-			    <h3 class="panel-title">Output</h3>
-			  </div>
-			  <div class="panel-body" style="height:300px;background-color:#000000;color:lime;" id="output">
-			  </div>
+	    <div class="row">
+			<div class="col-md-10">
+				<div class="row">
+					<div class="col-md-6">
+						<label class="radio-inline"><input type="radio" name="optradio" id="scripts">Scripts</label>
+				  		<label class="radio-inline"><input type="radio" name="optradio" id="sets">Sets</label>
+					</div>
+					<div class="col-md-4">
+						<button type="button" class="btn btn-default btn-lg" style="width:100%" id="refreshSets">
+		  					<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> Refresh Sets
+				 		 </button>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-md-6">
+						<select class="form-control" id="list"></select>
+					</div>
+					<div class="col-md-4">
+					  <button type="button" class="btn btn-default btn-lg" style="width:100%;margin-top:10" id="refresh">
+			  			<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> Refresh Scripts
+					  </button>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-md-6">
+						<input type="text" id="args" style="width:100%" placeholder="Arguments">
+					</div>
+					<div class="col-md-4">
+				  	    <button type="button" class="btn btn-default btn-lg" style="margin-top:10;width:100%" id="run">
+			  			    <span class="glyphicon glyphicon-play" aria-hidden="true"></span> Run
+					    </button>
+				  	</div>
+				</div>
+				<div class="row">
+					<div class="col-md-6">
+						<div class="panel panel-default">
+						  <div class="panel-heading">
+						    <h3 class="panel-title">Output</h3>
+						  </div>
+						  <div class="panel-body" style="height:300px;background-color:#000000;color:lime;" id="output">
+						  </div>
+						</div>
+					</div>
+					<div class="col-md-4">
+			  			<h2 id="scrst">Script status: <span></span></h2>
+			  		</div>
+				</div>
 			</div>
-	  	</div>
-	  	<div class="col-md-5">
-	  		<h2 id="scrst">Script status: <span></span></h2>
-	  	</div>
-	  </div>
+			<div class="col-md-2" style="float:left">
+				<div class="panel panel-default">
+				  <div class="panel-heading">
+				    <h3 class="panel-title">Set</h3>
+				  </div>
+				  <div class="panel-body" style="height:300px;color:black;" id="cset">
+				  </div>
+				</div>
+			</div>
+		</div>
 	</div>
-
 
 	<script>
 		$('document').ready(function(){
@@ -80,11 +89,43 @@
 
 			$("#scripts").click(function(){
 				RefreshScripts()
+				$("#cset").html("")
+			});
+
+			$("#list").change(function() {
+				if ($('#sets').is(":checked")){
+					var set = $("#list option:selected").text()
+					$.ajax({
+						url: "service/sets?set=" + set,
+						type: "get",
+						dataType: 'text',
+						success: function(data){
+							$("#cset").html("")
+							$.each(JSON.parse(data), function(i, val) {
+								$("#cset").append(val + "<br>")
+							})
+						}
+					});
+				}
 			});
 
 			$("#sets").click(function(){
 				RefreshSets()
-				var set = $("#list option:selected").text()
+
+				setTimeout(function(){
+					var set = $("#list option:selected").text();
+					$.ajax({
+						url: "service/sets?set=" + set,
+						type: "get",
+						dataType: 'text',
+						success: function(data){
+							$("#cset").html("")
+							$.each(JSON.parse(data), function(i, val) {
+								$("#cset").append(val + "<br>")
+							})
+						}
+					});
+				}, 500);
 			});
 
 			$("#run").click(function(){
@@ -106,7 +147,12 @@
 					});
 				}
 				else {
-					console.log("TODO sent sets req");
+					$.ajax({
+						url: "runset/" + name,
+						type: 'get',
+						dataType: 'text',
+					});
+					$("#output").html("")
 				}
 			});
 		});

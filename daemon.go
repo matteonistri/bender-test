@@ -179,6 +179,42 @@ func (c *Context) SetListHandler(w web.ResponseWriter, r *web.Request) {
 	w.Write(js)
 }
 
+func (c *Context) RunSetHandler(w web.ResponseWriter, r *web.Request) {
+	LogInf(logContextDaemon, "Receive RUNSET[%v] request from: %v", "Daemon", r.RemoteAddr)
+	set := r.PathParams["set"]
+	scr_list := GetSet(set)
+	repmap := make(map[string]string)
+
+	for _, scr := range scr_list {
+		status, _ := daemonLocalStatus.GetState()
+		for status != DaemonIdle {
+			status , _ = daemonLocalStatus.GetState()
+		}
+
+		name := strings.Split(scr, " ")[0]
+		uuid := uuid.NewV4().String()
+		repmap[uuid] = scr
+		timeout := 10
+		ip := strings.Split(r.RemoteAddr, ":")[0]
+		args := strings.Split(scr, " ")[1:]
+		url := "?"
+		for _, arg := range args {
+			url += arg + "&"
+		}
+		req, _ := http.NewRequest("GET", url, nil)
+		req.ParseForm()
+		params := req.Form
+
+		Submit(name, uuid, ip, params, time.Duration(timeout))
+	}
+	status, _ := daemonLocalStatus.GetState()
+	for status != DaemonIdle {
+		status , _ = daemonLocalStatus.GetState()
+	}
+	time.Sleep(500 * time.Millisecond)
+	CreateSetReport(repmap, set)
+}
+
 func (c *Context) Websocket(w web.ResponseWriter, r *web.Request) {
 	LogInf(logContextDaemon, "Receive WEBSOCKET[%v] request from: %v", "Daemon", r.RemoteAddr)
 
@@ -220,6 +256,7 @@ func DaemonInit(sm *StatusModule, cm *ConfigModule) {
 	router.Get("/", (*Context).HomeHandler)
 	router.Get("/service/list", (*Context).ListHandler)
 	router.Get("/service/sets", (*Context).SetListHandler)
+	router.Get("/runset/:set", (*Context).RunSetHandler)
 	router.Get("/websocket", (*Context).Websocket)
 	router.Get("/closews", (*Context).CloseWebsocket)
 

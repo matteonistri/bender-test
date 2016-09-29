@@ -47,6 +47,7 @@ type JobInterface interface {
 
 var logContextRunner LoggerContext
 var localScriptPath string
+var localSetPath string
 
 //hasScript Check if a script exists
 func hasScript(script string) (string, bool) {
@@ -169,8 +170,24 @@ func List() []string {
 
 // GetSet ...
 func GetSet(set string) []string {
-	file, err := os.Open(filepath.Join("sets", set))
+	sets, err := ioutil.ReadDir(localSetPath)
 	var list []string
+	if err != nil {
+		LogErr(logContextRunner, "No sets dir found")
+		return list
+	}
+
+	name := ""
+	for _, file := range sets{
+		n := strings.LastIndexByte(file.Name(), '.')
+		if n > 0 && file.Name()[:n] == set{
+			name = file.Name()
+		} else if n <= 0 && file.Name() == set {
+			name = file.Name()
+		}
+	}
+
+	file, err := os.Open(filepath.Join(localSetPath, name))
 
 	if err != nil {
 		LogErr(logContextRunner, "Set file not found")
@@ -187,7 +204,7 @@ func GetSet(set string) []string {
 
 // SetsList ...
 func SetsList() []string {
-	sets, err := ioutil.ReadDir("sets")
+	sets, err := ioutil.ReadDir(localSetPath)
 	var list []string
 
 	if err != nil {
@@ -196,7 +213,12 @@ func SetsList() []string {
 	}
 
 	for _, set := range sets {
-		list = append(list, set.Name())
+		n := strings.LastIndexByte(set.Name(), '.')
+		if n > 0 {
+			list = append(list, set.Name()[:n])
+		} else {
+			list = append(list, set.Name())
+		}
 	}
 
 	return list
@@ -205,10 +227,12 @@ func SetsList() []string {
 // RunnerInit ...
 func RunnerInit(cm *ConfigModule) {
 	localScriptPath = cm.Get("runner", "script_path", "scripts")
+	localSetPath = cm.Get("runner", "set_path", "sets")
 	logContextRunner = LoggerContext{
 		name:  "RUNNER",
 		level: cm.GetLogLevel("runner", 3)}
 
 	LogInf(logContextRunner, "Start")
 	LogInf(logContextRunner, "Script path[%v]", localScriptPath)
+	LogInf(logContextRunner, "Set path[%v]", localSetPath)
 }

@@ -1,4 +1,4 @@
-foo
+hellofail
 hellosleep
 sleep
-foo
+arg -c vsd
