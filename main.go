@@ -1,6 +1,8 @@
 package main
 
-import "github.com/matishsiao/goInfo"
+import ( "github.com/matishsiao/goInfo"
+		 "github.com/cvanderschuere/avahi-go"
+	   )
 
 func main() {
 	var sm StatusModule
@@ -23,6 +25,11 @@ func main() {
 	ReportInit(&cm)
 	WebsocketInit(&sm)
 
+	//Start autodiscover
+	avahi.PublishService("Bender-test", "_http._tcp", 8080)
+	LogInf(logContextMain, "Start autodiscover")
+
 	// Start daemon
 	DaemonInit(&sm, &cm)
+
 }
